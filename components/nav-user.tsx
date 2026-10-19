@@ -28,7 +28,10 @@ import {
   BellIcon,
   Logout2Icon,
   StarsMinimalisticIcon,
+  Sun2Icon,
+  MoonIcon,
 } from "@solar-icons/react/outline"
+import { useTheme } from "@/components/theme-provider"
 
 export function NavUser({
   user,
@@ -40,6 +43,7 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const { resolvedTheme, setTheme } = useTheme()
   const initials = user.name
     .split(" ")
     .map((part) => part[0])
@@ -118,6 +122,17 @@ export function NavUser({
               <DropdownMenuItem className="gap-2 cursor-pointer">
                 <BellIcon className="size-4" />
                 <span>Notifications</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer"
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              >
+                {resolvedTheme === "dark" ? (
+                  <Sun2Icon className="size-4 text-amber-500" />
+                ) : (
+                  <MoonIcon className="size-4 text-primary" />
+                )}
+                <span>{resolvedTheme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

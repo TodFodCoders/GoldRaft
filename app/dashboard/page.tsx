@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar"
-import { DashboardResizableSplit } from "@/components/dashboard-resizable-split"
+import { BottomDraggableTab } from "@/components/bottom-draggable-tab"
+import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
@@ -18,17 +19,22 @@ export default function Page() {
       }
     >
       <AppSidebar variant="inset" />
-      <SidebarInset>
+      <SidebarInset className="md:peer-data-[variant=inset]:mb-0 md:peer-data-[variant=inset]:rounded-b-none md:peer-data-[variant=inset]:shadow-none">
         <SiteHeader />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 pb-24">
               <SectionCards />
-              <DashboardResizableSplit />
+              <div className="px-4 lg:px-6">
+                <ChartAreaInteractive />
+              </div>
               <DataTable data={data} />
             </div>
           </div>
         </div>
+
+        {/* Draggable Half Area Tab from Bottom */}
+        <BottomDraggableTab />
       </SidebarInset>
     </SidebarProvider>
   )
