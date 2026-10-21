@@ -12,7 +12,6 @@ import {
   AltArrowUpIcon,
   AltArrowDownIcon,
   CloseIcon,
-  GripHorizontalIcon,
   ArrowRightUpIcon,
   DocumentTextIcon,
   AddIcon,
@@ -68,12 +67,27 @@ export function BottomDraggableTab() {
   }, [snapTo])
 
   const toggleExpand = React.useCallback(() => {
-    if (isExpanded) {
-      snapToCollapse()
-    } else {
-      snapToHalf()
+    setHeight((prev) => {
+      const isCurrentlyExpanded = prev > COLLAPSED_HEIGHT + 20
+      return isCurrentlyExpanded ? COLLAPSED_HEIGHT : getHalfHeight()
+    })
+  }, [getHalfHeight])
+
+  // Keyboard shortcut: Ctrl+O / Cmd+O to toggle draggable drawer
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "o"
+      ) {
+        event.preventDefault()
+        toggleExpand()
+      }
     }
-  }, [isExpanded, snapToCollapse, snapToHalf])
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [toggleExpand])
 
   // Drag handlers using pointer events
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -149,7 +163,7 @@ export function BottomDraggableTab() {
   const leftOffset = isMobile
     ? "0px"
     : state === "collapsed"
-      ? "var(--sidebar-width-icon)"
+      ? "calc(var(--sidebar-width-icon) + 1rem + 2px)"
       : "var(--sidebar-width)"
 
   return (
@@ -157,7 +171,7 @@ export function BottomDraggableTab() {
       style={{
         height: `${height}px`,
         left: leftOffset,
-        right: 0,
+        right: isMobile ? 0 : "0.5rem",
         bottom: 0,
         marginBottom: 0,
         boxShadow: "none",
@@ -228,14 +242,12 @@ export function BottomDraggableTab() {
               </div>
             </div>
 
-            {/* Center: Subtle drag guidance hint */}
-            <div className="hidden lg:flex items-center gap-1 text-[11px] text-muted-foreground">
-              <GripHorizontalIcon className="size-3.5 opacity-60" />
-              <span>Drag tab up/down or click to toggle</span>
-            </div>
-
             {/* Right: Quick Snap & Toggle Buttons */}
             <div className="flex items-center gap-1.5 shrink-0">
+              <kbd className="hidden sm:inline-flex h-5 items-center rounded border border-border bg-muted/60 px-1.5 font-mono text-[10px] text-muted-foreground select-none">
+                Ctrl+O
+              </kbd>
+
               {/* Quick Snap to 50% Half View */}
               <Button
                 variant={isHalfView ? "secondary" : "ghost"}
@@ -269,7 +281,7 @@ export function BottomDraggableTab() {
                   e.stopPropagation()
                   toggleExpand()
                 }}
-                title={isExpanded ? "Collapse to Bottom Tab" : "Expand to Half Area"}
+                title={isExpanded ? "Collapse to Bottom Tab (Ctrl+O)" : "Expand to Half Area (Ctrl+O)"}
               >
                 {isExpanded ? (
                   <AltArrowDownIcon className="size-4" />

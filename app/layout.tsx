@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -27,15 +28,14 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${poppins.variable} font-sans h-full antialiased`}
     >
-      <head>
-        <script
+      <body className="min-h-full flex flex-col font-sans">
+        <Script
           id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `!function(){try{var t=localStorage.getItem("theme")||"system";var d=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";var c=t==="system"?d:t;if(c==="dark"){document.documentElement.classList.add("dark")}else{document.documentElement.classList.remove("dark")}}catch(e){}}();`,
           }}
         />
-      </head>
-      <body className="min-h-full flex flex-col font-sans">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

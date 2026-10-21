@@ -28,6 +28,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
@@ -118,6 +119,7 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { isMobile, state } = useSidebar()
   const [activeWorkspace, setActiveWorkspace] = React.useState(data.workspaces[0])
   const WorkspaceIcon = activeWorkspace.icon
 
@@ -135,7 +137,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   />
                 }
               >
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden border bg-background text-primary-foreground font-semibold">
+                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden border bg-background text-primary-foreground font-semibold">
                   {"logo" in activeWorkspace && activeWorkspace.logo ? (
                     <Image
                       src={activeWorkspace.logo}
@@ -149,7 +151,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <WorkspaceIcon className="size-4" />
                   )}
                 </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-semibold text-foreground">
                     {activeWorkspace.name}
                   </span>
@@ -157,12 +159,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     {activeWorkspace.plan}
                   </span>
                 </div>
-                <ChevronsUpDownIcon className="ml-auto size-4 shrink-0 opacity-50" />
+                <ChevronsUpDownIcon className="ml-auto size-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 className="w-56 rounded-lg"
                 align="start"
-                side="bottom"
+                side={isMobile ? "bottom" : state === "collapsed" ? "right" : "bottom"}
                 sideOffset={4}
               >
                 <DropdownMenuGroup>
