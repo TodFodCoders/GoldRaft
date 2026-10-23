@@ -11,12 +11,9 @@ import {
   BoxMinimalisticIcon,
   SettingsMinimalisticIcon,
   QuestionCircleIcon,
-  SendSquareIcon,
   ChevronsUpDownIcon,
   LayersMinimalisticIcon,
-  AddIcon,
   CheckIcon,
-  StarsMinimalisticIcon,
 } from "@solar-icons/react/outline"
 
 import {
@@ -36,7 +33,6 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
@@ -48,80 +44,76 @@ import { NavUser } from "@/components/nav-user"
 const data = {
   user: {
     name: "Alex Morgan",
-    email: "alex@goldraft.com",
+    email: "quant@goldraft.internal",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&auto=format&fit=crop&q=80",
   },
-  workspaces: [
+  instruments: [
     {
-      name: "GoldRaft",
-      plan: "Enterprise",
+      name: "MCX Gold Derivatives",
+      plan: "GOLDM / TEN / GUINEA / PETAL",
       logo: "/goldraft.png",
       icon: LayersMinimalisticIcon,
+      available: true,
     },
     {
-      name: "Acme Studio",
-      plan: "Pro",
+      name: "MCX Silver Derivatives",
+      plan: "SILVER / MIC / MINI (Coming Soon)",
       icon: BoxMinimalisticIcon,
-    },
-    {
-      name: "Personal",
-      plan: "Hobby",
-      icon: StarsMinimalisticIcon,
+      available: false,
     },
   ],
   navMain: [
     {
-      title: "Overview",
-      url: "/",
+      title: "Dashboard",
+      url: "/dashboard",
       icon: <Widget2Icon className="size-4" />,
     },
     {
-      title: "Analytics",
-      url: "/dashboard",
+      title: "Contracts & Prices",
+      url: "/dashboard#contracts",
+      icon: <LayersMinimalisticIcon className="size-4" />,
+      badge: "4",
+    },
+    {
+      title: "Spreads & Carry",
+      url: "/dashboard#spreads",
       icon: <Chart2Icon className="size-4" />,
-      badge: "Live",
     },
     {
-      title: "Projects",
-      url: "/#projects",
+      title: "Backtest",
+      url: "/dashboard#backtest",
       icon: <FolderKanbanIcon className="size-4" />,
-      badge: "8",
     },
     {
-      title: "Tasks",
-      url: "/#tasks",
+      title: "Quiet Mode Alerts",
+      url: "/dashboard#alerts",
       icon: <ChecklistIcon className="size-4" />,
-      badge: "3",
+      badge: "Quiet",
     },
     {
-      title: "Calendar",
-      url: "/#calendar",
+      title: "Contract Calendar",
+      url: "/dashboard#calendar",
       icon: <CalendarIcon className="size-4" />,
     },
   ],
   navSecondary: [
     {
-      title: "Settings",
-      url: "/#settings",
+      title: "Data Quality Log",
+      url: "/dashboard#data-quality",
       icon: <SettingsMinimalisticIcon className="size-4" />,
     },
     {
-      title: "Support",
-      url: "/#support",
+      title: "MCX Rules & Specs",
+      url: "/dashboard#specs",
       icon: <QuestionCircleIcon className="size-4" />,
-    },
-    {
-      title: "Feedback",
-      url: "/#feedback",
-      icon: <SendSquareIcon className="size-4" />,
     },
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile, state } = useSidebar()
-  const [activeWorkspace, setActiveWorkspace] = React.useState(data.workspaces[0])
-  const WorkspaceIcon = activeWorkspace.icon
+  const [activeInstrument, setActiveInstrument] = React.useState(data.instruments[0])
+  const InstrumentIcon = activeInstrument.icon
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -138,53 +130,58 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 }
               >
                 <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden border bg-background text-primary-foreground font-semibold">
-                  {"logo" in activeWorkspace && activeWorkspace.logo ? (
+                  {"logo" in activeInstrument && activeInstrument.logo ? (
                     <Image
-                      src={activeWorkspace.logo}
-                      alt={activeWorkspace.name}
+                      src={activeInstrument.logo}
+                      alt={activeInstrument.name}
                       width={32}
                       height={32}
                       className="size-full object-cover"
                       priority
                     />
                   ) : (
-                    <WorkspaceIcon className="size-4" />
+                    <InstrumentIcon className="size-4" />
                   )}
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-semibold text-foreground">
-                    {activeWorkspace.name}
+                    {activeInstrument.name}
                   </span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {activeWorkspace.plan}
+                    {activeInstrument.plan}
                   </span>
                 </div>
                 <ChevronsUpDownIcon className="ml-auto size-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-56 rounded-lg"
+                className="w-64 rounded-lg"
                 align="start"
                 side={isMobile ? "bottom" : state === "collapsed" ? "right" : "bottom"}
                 sideOffset={4}
               >
                 <DropdownMenuGroup>
                   <DropdownMenuLabel className="text-xs text-muted-foreground">
-                    Workspaces
+                    Commodity Derivatives
                   </DropdownMenuLabel>
-                  {data.workspaces.map((workspace) => {
-                    const Icon = workspace.icon
-                    const isSelected = workspace.name === activeWorkspace.name
+                  {data.instruments.map((instrument) => {
+                    const Icon = instrument.icon
+                    const isSelected = instrument.name === activeInstrument.name
                     return (
                       <DropdownMenuItem
-                        key={workspace.name}
-                        onClick={() => setActiveWorkspace(workspace)}
-                        className="gap-2 p-2 cursor-pointer"
+                        key={instrument.name}
+                        disabled={!instrument.available}
+                        onClick={() => {
+                          if (instrument.available) {
+                            setActiveInstrument(instrument)
+                          }
+                        }}
+                        className={`gap-2 p-2 ${instrument.available ? "cursor-pointer" : "opacity-60 cursor-not-allowed"}`}
                       >
                         <div className="flex size-6 items-center justify-center rounded-sm overflow-hidden border bg-background">
-                          {"logo" in workspace && workspace.logo ? (
+                          {"logo" in instrument && instrument.logo ? (
                             <Image
-                              src={workspace.logo}
-                              alt={workspace.name}
+                              src={instrument.logo}
+                              alt={instrument.name}
                               width={24}
                               height={24}
                               className="size-full object-cover"
@@ -193,22 +190,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             <Icon className="size-3.5 shrink-0" />
                           )}
                         </div>
-                        <span className="flex-1 text-sm font-medium">
-                          {workspace.name}
-                        </span>
+                        <div className="flex flex-col flex-1">
+                          <span className="text-sm font-medium">
+                            {instrument.name}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {instrument.plan}
+                          </span>
+                        </div>
                         {isSelected && <CheckIcon className="size-4 ml-auto text-primary" />}
                       </DropdownMenuItem>
                     )
                   })}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem className="gap-2 p-2 cursor-pointer text-muted-foreground">
-                    <div className="flex size-6 items-center justify-center rounded-md border border-dashed">
-                      <AddIcon className="size-3.5" />
-                    </div>
-                    <span className="text-sm font-medium">Create workspace</span>
-                  </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>

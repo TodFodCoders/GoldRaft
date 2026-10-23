@@ -142,13 +142,8 @@ const chartConfig = {
 
 export function ChartAreaInteractive() {
   const isMobile = useIsMobile()
-  const [timeRange, setTimeRange] = React.useState("90d")
-
-  React.useEffect(() => {
-    if (isMobile) {
-      setTimeRange("7d")
-    }
-  }, [isMobile])
+  const [selectedRange, setSelectedRange] = React.useState<string | null>(null)
+  const timeRange = selectedRange ?? (isMobile ? "7d" : "90d")
 
   const filteredData = chartData.filter((item) => {
     const date = new Date(item.date)
@@ -179,7 +174,9 @@ export function ChartAreaInteractive() {
             multiple={false}
             value={timeRange ? [timeRange] : []}
             onValueChange={(value) => {
-              setTimeRange(value[0] ?? "90d")
+              if (value[0]) {
+                setSelectedRange(value[0])
+              }
             }}
             variant="outline"
             className="hidden *:data-[slot=toggle-group-item]:px-4! @[767px]/card:flex"
@@ -192,7 +189,7 @@ export function ChartAreaInteractive() {
             value={timeRange}
             onValueChange={(value) => {
               if (value !== null) {
-                setTimeRange(value)
+                setSelectedRange(value)
               }
             }}
           >

@@ -12,7 +12,6 @@ import {
   AltArrowUpIcon,
   AltArrowDownIcon,
   CloseIcon,
-  ArrowRightUpIcon,
   DocumentTextIcon,
   AddIcon,
 } from "@solar-icons/react/outline"
