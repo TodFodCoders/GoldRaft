@@ -28,7 +28,9 @@ Because their raw quotations are not directly comparable, **GoldRaft**:
 
 ---
 
-## 2. Contract Specifications (Master Reference)
+## 2. Contract Specifications (Reference Specification, Unverified)
+
+> *Note: All contract rules, settlement types, and delivery schedules below are reference specifications flagged `verified: false` pending final verification against MCX circulars.*
 
 | Contract | Trading Unit | Quotation Base | Purity | Quote Location | Settlement Type | Expiry Rule | Tender Window |
 |---|---|---|---|---|---|---|---|
@@ -37,7 +39,7 @@ Because their raw quotations are not directly comparable, **GoldRaft**:
 | **GOLDGUINEA** | 8 g | 8 g | 999 | Ahmedabad | Compulsory Delivery | Last calendar day (holiday adjusted) | Last 3 trading days incl. expiry |
 | **GOLDPETAL** | 1 g | 1 g | 999 | Mumbai* | Compulsory Delivery | Last calendar day (holiday adjusted) | Last 3 trading days incl. expiry |
 
-*\*Note: GOLDPETAL is basis Mumbai; all pairs involving GOLDPETAL are explicitly flagged with `location basis differs`.*
+*\*Note: GOLDPETAL is basis Mumbai; all pairs involving GOLDPETAL are explicitly flagged with `location basis differs` (unverified basis differential).*
 
 ---
 
