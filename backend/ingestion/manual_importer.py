@@ -90,28 +90,13 @@ class ManualImporter:
         self,
         filepath: Path,
         dedupe_set: Optional[Set[str]] = None,
+        existing_hashes: Optional[Set[str]] = None,
     ) -> Tuple[ValidationResult, List[Dict[str, Any]]]:
         """Validate, parse, and extract gold records from a single Bhavcopy file."""
         filename = filepath.name
         requested_date = parse_filename_requested_date(filename)
         sha256_hash = compute_file_sha256(filepath)
         warnings: List[str] = []
-
-        if dedupe_set is not None:
-            if sha256_hash in dedupe_set:
-                return (
-                    ValidationResult(
-                        filepath=filepath,
-                        filename=filename,
-                        requested_date=requested_date,
-                        content_date=None,
-                        sha256_hash=sha256_hash,
-                        is_valid=False,
-                        quarantine_reason="DUPLICATE_CONTENT_HASH",
-                        warnings=["Exact file sha256 content hash already ingested"],
-                    ),
-                    [],
-                )
 
         content_date, header = inspect_file_header_and_date(filepath)
 
@@ -130,6 +115,54 @@ class ManualImporter:
                         warnings=[
                             f"Trap detected: Filename requested {requested_date} but content returned {content_date}"
                         ],
+                    ),
+                    [],
+                )
+
+        if content_date is None:
+            return (
+                ValidationResult(
+                    filepath=filepath,
+                    filename=filename,
+                    requested_date=requested_date,
+                    content_date=None,
+                    sha256_hash=sha256_hash,
+                    is_valid=False,
+                    quarantine_reason="NO_VALID_TRADE_DATE_FOUND",
+                    warnings=["Could not parse trade date from file header/rows"],
+                ),
+                [],
+            )
+
+        if existing_hashes is not None and sha256_hash in existing_hashes:
+            return (
+                ValidationResult(
+                    filepath=filepath,
+                    filename=filename,
+                    requested_date=requested_date,
+                    content_date=content_date,
+                    sha256_hash=sha256_hash,
+                    is_valid=True,
+                    is_already_imported=True,
+                    quarantine_reason="ALREADY_STORED",
+                    rows_accepted=0,
+                    warnings=["File already present in persistent store"],
+                ),
+                [],
+            )
+
+        if dedupe_set is not None:
+            if sha256_hash in dedupe_set:
+                return (
+                    ValidationResult(
+                        filepath=filepath,
+                        filename=filename,
+                        requested_date=requested_date,
+                        content_date=content_date,
+                        sha256_hash=sha256_hash,
+                        is_valid=False,
+                        quarantine_reason="DUPLICATE_CONTENT_HASH",
+                        warnings=["Exact file sha256 content hash already ingested in this run"],
                     ),
                     [],
                 )
@@ -311,7 +344,11 @@ class ManualImporter:
         )
         return val_result, records
 
-    def import_all(self, directory: Optional[Path] = None) -> Dict[str, Any]:
+    def import_all(
+        self,
+        directory: Optional[Path] = None,
+        check_existing_store: bool = True,
+    ) -> Dict[str, Any]:
         """Import all files in the drop directory idempotently."""
         target_dir = directory or self.manual_drop_dir
         if not target_dir.exists():
@@ -320,6 +357,7 @@ class ManualImporter:
                 "message": f"Drop directory {target_dir} does not exist",
                 "results": [],
                 "accepted_count": 0,
+                "already_imported_count": 0,
                 "quarantined_count": 0,
                 "total_records": 0,
             }
@@ -329,16 +367,28 @@ class ManualImporter:
             key=lambda x: x.name,
         )
 
+        existing_hashes: Set[str] = set()
+        if check_existing_store and target_dir.resolve() == DEFAULT_DROP_DIR.resolve():
+            try:
+                from backend.storage.parquet_store import get_parquet_store
+                existing_hashes = get_parquet_store().get_stored_hashes()
+            except Exception:
+                existing_hashes = set()
+
         results: List[ValidationResult] = []
         all_records: List[Dict[str, Any]] = []
         seen_hashes: Set[str] = set()
         quarantine_log = self.load_quarantine_log()
 
         for filepath in files:
-            val_res, records = self.import_single_file(filepath, dedupe_set=seen_hashes)
+            val_res, records = self.import_single_file(
+                filepath, dedupe_set=seen_hashes, existing_hashes=existing_hashes
+            )
             results.append(val_res)
 
-            if val_res.is_valid:
+            if val_res.is_already_imported:
+                pass
+            elif val_res.is_valid:
                 seen_hashes.add(val_res.sha256_hash)
                 all_records.extend(records)
             else:
@@ -356,13 +406,15 @@ class ManualImporter:
 
         self.save_quarantine_log(quarantine_log)
 
-        accepted_files = [r for r in results if r.is_valid]
+        accepted_files = [r for r in results if r.is_valid and not r.is_already_imported]
+        already_imported_files = [r for r in results if r.is_already_imported]
         quarantined_files = [r for r in results if not r.is_valid]
 
         return {
             "status": "COMPLETED",
             "results": [r.to_dict() for r in results],
             "accepted_count": len(accepted_files),
+            "already_imported_count": len(already_imported_files),
             "quarantined_count": len(quarantined_files),
             "total_records": len(all_records),
             "records": all_records,

@@ -77,6 +77,7 @@ class ValidationResult:
         quarantine_reason: Optional[str] = None,
         rows_accepted: int = 0,
         warnings: Optional[List[str]] = None,
+        is_already_imported: bool = False,
     ):
         self.filepath = filepath
         self.filename = filename
@@ -87,15 +88,26 @@ class ValidationResult:
         self.quarantine_reason = quarantine_reason
         self.rows_accepted = rows_accepted
         self.warnings = warnings or []
+        self.is_already_imported = is_already_imported
 
     def to_dict(self) -> Dict[str, Any]:
+        if self.is_already_imported:
+            status = "ALREADY_IMPORTED"
+            reason = "ALREADY_STORED"
+        elif self.is_valid:
+            status = "ACCEPTED"
+            reason = "VALID"
+        else:
+            status = "QUARANTINED"
+            reason = self.quarantine_reason or "FAILED"
+
         return {
             "filename": self.filename,
             "requested_date": self.requested_date.isoformat() if self.requested_date else None,
             "content_date": self.content_date.isoformat() if self.content_date else None,
             "sha256_prefix": self.sha256_hash[:12],
-            "status": "ACCEPTED" if self.is_valid else "QUARANTINED",
-            "reason": self.quarantine_reason or "VALID",
+            "status": status,
+            "reason": reason,
             "rows_accepted": self.rows_accepted,
             "warnings_count": len(self.warnings),
         }

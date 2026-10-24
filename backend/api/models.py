@@ -118,6 +118,7 @@ class QuarantineRecord(BaseModel):
 class DataQualityPayload(BaseModel):
     total_files_evaluated: int
     accepted_files_count: int
+    already_imported_files_count: int = 0
     quarantined_files_count: int
     quarantine_log: List[QuarantineRecord]
     imported_files: List[Dict[str, Any]]
@@ -142,3 +143,19 @@ class CalendarPayload(BaseModel):
     holidays_count: int
     holidays: List[HolidayItem]
     sample_tender_checks: Optional[Dict[str, Any]] = None
+
+
+class CoveragePayload(BaseModel):
+    range_from: str
+    range_to: str
+    total_trading_days_in_range: int
+    trading_days_with_file_count: int
+    missing_trading_days_count: int
+    mismatched_date_trap_files_count: int
+    duplicate_hash_files_count: int
+    trading_days_with_file: List[str]
+    missing_trading_days: List[str]
+    mismatched_trap_files: List[Dict[str, Any]] = Field(default_factory=list)
+    duplicate_hash_files: List[Dict[str, Any]] = Field(default_factory=list)
+    first_accepted_date: Optional[str] = None
+    last_accepted_date: Optional[str] = None

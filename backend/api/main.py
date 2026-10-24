@@ -9,10 +9,12 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.analytics.coverage import compute_coverage
 from backend.api.models import (
     CalendarPayload,
     ContractItem,
     ContractsPayload,
+    CoveragePayload,
     DataQualityPayload,
     DataStatus,
     HealthPayload,
@@ -37,12 +39,15 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Enable CORS for Next.js dev server
+# Enable CORS strictly for local frontend origins (never wildcard '*')
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -210,10 +215,12 @@ def get_data_quality() -> ResponseEnvelope[DataQualityPayload]:
 
     # Re-scan manual drop directory to get current status table
     scan_res = importer.import_all()
+    valid_files_total = scan_res["accepted_count"] + scan_res.get("already_imported_count", 0)
 
     payload = DataQualityPayload(
         total_files_evaluated=len(scan_res["results"]),
-        accepted_files_count=scan_res["accepted_count"],
+        accepted_files_count=valid_files_total,
+        already_imported_files_count=scan_res.get("already_imported_count", 0),
         quarantined_files_count=len(quarantine_records),
         quarantine_log=quarantine_records,
         imported_files=scan_res["results"],
@@ -226,7 +233,9 @@ def get_data_quality() -> ResponseEnvelope[DataQualityPayload]:
         as_of=datetime.datetime.now(datetime.timezone.utc).isoformat(),
         source_mode="MANUAL_DROP_SCAN",
         validation_summary={
-            "accepted_files": scan_res["accepted_count"],
+            "accepted_files": valid_files_total,
+            "newly_accepted": scan_res["accepted_count"],
+            "already_imported": scan_res.get("already_imported_count", 0),
             "quarantined_files": len(quarantine_records),
         },
         assumptions=[
@@ -234,6 +243,34 @@ def get_data_quality() -> ResponseEnvelope[DataQualityPayload]:
             "Duplicate content sha256 hashes are deduplicated",
         ],
         provenance_ids=["backend/data/quarantine/quarantine_log.json"],
+        payload=payload,
+    )
+
+
+@app.get("/data-quality/coverage", response_model=ResponseEnvelope[CoveragePayload])
+def get_coverage_endpoint(
+    from_date: Optional[str] = Query("2025-01-01", description="Start date (YYYY-MM-DD)"),
+    to_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+) -> ResponseEnvelope[CoveragePayload]:
+    cov = compute_coverage(from_date_str=from_date, to_date_str=to_date)
+    payload = CoveragePayload(**cov)
+
+    data_status = DataStatus.MANUAL_IMPORT if cov["trading_days_with_file_count"] > 0 else DataStatus.UNAVAILABLE
+
+    return ResponseEnvelope[CoveragePayload](
+        data_status=data_status,
+        as_of=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        source_mode="CALENDAR_COVERAGE_CHECK",
+        validation_summary={
+            "total_trading_days": cov["total_trading_days_in_range"],
+            "trading_days_with_file": cov["trading_days_with_file_count"],
+            "missing_trading_days": cov["missing_trading_days_count"],
+        },
+        assumptions=[
+            "Trading day defined as open under ANY_SESSION policy (Morning or Evening session)",
+            "Weekends (Saturday, Sunday) and full trading holidays are non-trading days",
+        ],
+        provenance_ids=["backend/config/mcx_holidays.csv", "backend/data/parquet/gold_futures.parquet"],
         payload=payload,
     )
 

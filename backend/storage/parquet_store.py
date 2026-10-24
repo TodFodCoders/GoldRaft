@@ -103,6 +103,34 @@ class ParquetStore:
             con.close()
             return []
 
+    def get_stored_hashes(self) -> set[str]:
+        if not self.parquet_path.exists():
+            return set()
+        con = duckdb.connect(":memory:")
+        file_path_str = str(self.parquet_path).replace("\\", "/")
+        try:
+            rel = con.execute(f"SELECT DISTINCT source_sha256 FROM read_parquet('{file_path_str}') WHERE source_sha256 IS NOT NULL")
+            hashes = {row[0] for row in rel.fetchall()}
+            con.close()
+            return hashes
+        except Exception:
+            con.close()
+            return set()
+
+    def get_stored_dates(self) -> List[str]:
+        if not self.parquet_path.exists():
+            return []
+        con = duckdb.connect(":memory:")
+        file_path_str = str(self.parquet_path).replace("\\", "/")
+        try:
+            rel = con.execute(f"SELECT DISTINCT trade_date FROM read_parquet('{file_path_str}') ORDER BY trade_date ASC")
+            dates = [row[0] for row in rel.fetchall()]
+            con.close()
+            return dates
+        except Exception:
+            con.close()
+            return []
+
 
 # Global store instance
 _default_store: Optional[ParquetStore] = None
