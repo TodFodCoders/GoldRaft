@@ -159,3 +159,41 @@ class CoveragePayload(BaseModel):
     duplicate_hash_files: List[Dict[str, Any]] = Field(default_factory=list)
     first_accepted_date: Optional[str] = None
     last_accepted_date: Optional[str] = None
+
+
+class NormalizedPayload(BaseModel):
+    total_records: int
+    purity_scaling_applied: bool
+    lcm_basket: Dict[str, Any]
+    records: List[Dict[str, Any]]
+
+
+class SpreadsPayload(BaseModel):
+    total_pairs: int
+    summary_kpi_pair: Optional[Dict[str, Any]] = None
+    zscore_status: Dict[str, Any]
+    pairs: List[Dict[str, Any]]
+
+
+class CurvePayload(BaseModel):
+    trade_date: str
+    symbol: str
+    expiries_count: int
+    points: List[Dict[str, Any]]
+    rolls: List[Dict[str, Any]]
+
+
+class LiquidityPayload(BaseModel):
+    symbol: str
+    expiry_date: str
+    observations_count: int
+    disclaimer: str
+    results: List[Dict[str, Any]]
+
+
+class OffsetDiagnosticPayload(BaseModel):
+    target_expiry: Optional[str]
+    observations_count: int
+    disclaimer: str
+    sample_size_note: str
+    observations: List[Dict[str, Any]]

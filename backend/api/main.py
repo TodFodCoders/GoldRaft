@@ -6,23 +6,34 @@ import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import pandas as pd
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.analytics.coverage import compute_coverage
+from backend.analytics.curve import compute_symbol_curve
+from backend.analytics.liquidity import compute_contract_liquidity_series
+from backend.analytics.offset_diagnostic import compute_offset_diagnostics
+from backend.analytics.relative_value import compute_pair_spread, compute_point_in_time_zscore
+from backend.normalization.price_normalizer import compute_four_contract_lcm, normalize_record
 from backend.api.models import (
     CalendarPayload,
     ContractItem,
     ContractsPayload,
     CoveragePayload,
+    CurvePayload,
     DataQualityPayload,
     DataStatus,
     HealthPayload,
     HolidayItem,
+    LiquidityPayload,
+    NormalizedPayload,
+    OffsetDiagnosticPayload,
     PriceRecord,
     PricesPayload,
     QuarantineRecord,
     ResponseEnvelope,
+    SpreadsPayload,
 )
 from backend.contract_calendar.calendar import (
     CALENDAR_COVERAGE_END,
@@ -323,5 +334,279 @@ def get_calendar_endpoint(
             "Dates outside 2025-2026 coverage window return TENDER_STATUS=UNKNOWN",
         ],
         provenance_ids=["backend/config/mcx_holidays.csv"],
+        payload=payload,
+    )
+
+
+@app.get("/normalized", response_model=ResponseEnvelope[NormalizedPayload])
+def get_normalized(
+    apply_purity_scaling: bool = Query(True, description="Apply purity scaling (999 / purity)"),
+    symbol: Optional[str] = Query(None, description="Filter by contract symbol"),
+    trade_date: Optional[str] = Query(None, description="Filter by trade date (YYYY-MM-DD)"),
+    expiry: Optional[str] = Query(None, description="Filter by expiry date (YYYY-MM-DD)"),
+    limit: int = Query(100, ge=1, le=1000, description="Pagination limit"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+) -> ResponseEnvelope[NormalizedPayload]:
+    store = get_parquet_store()
+    cfg = load_contracts_config()
+    specs = cfg.get("contracts", {})
+
+    records = store.query(symbol=symbol, expiry=expiry, from_date=trade_date, to_date=trade_date)
+    # Re-normalize if sensitivity mode is requested
+    normalized_records = [
+        normalize_record(r, specs, apply_purity_scaling=apply_purity_scaling)
+        for r in records
+    ]
+
+    paginated = normalized_records[offset: offset + limit]
+    lcm_basket = compute_four_contract_lcm()
+
+    payload = NormalizedPayload(
+        total_records=len(normalized_records),
+        purity_scaling_applied=apply_purity_scaling,
+        lcm_basket=lcm_basket,
+        records=paginated,
+    )
+
+    data_status = DataStatus.MANUAL_IMPORT if len(normalized_records) > 0 else DataStatus.UNAVAILABLE
+
+    return ResponseEnvelope[NormalizedPayload](
+        data_status=data_status,
+        as_of=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        source_mode="PRICE_NORMALIZER",
+        validation_summary={
+            "total_records": len(normalized_records),
+            "purity_scaling": apply_purity_scaling,
+        },
+        assumptions=[
+            "Normalized price is metal-content basis: (price / quote_base_g) * 10 * (999 / purity)",
+            "Metal-content basis is NOT an executable parity or spread",
+        ],
+        provenance_ids=["backend/normalization/price_normalizer.py"],
+        payload=payload,
+    )
+
+
+@app.get("/spreads", response_model=ResponseEnvelope[SpreadsPayload])
+def get_spreads(
+    trade_date: Optional[str] = Query(None, description="Trade date (YYYY-MM-DD). Defaults to latest session."),
+    expiry: Optional[str] = Query(None, description="Expiry date filter (YYYY-MM-DD)"),
+    symbol_a: Optional[str] = Query(None, description="First leg symbol"),
+    symbol_b: Optional[str] = Query(None, description="Second leg symbol"),
+    min_samples: int = Query(30, ge=5, le=100, description="Minimum consecutive history for Z-score"),
+) -> ResponseEnvelope[SpreadsPayload]:
+    store = get_parquet_store()
+    cfg = load_contracts_config()
+    specs = cfg.get("contracts", {})
+
+    stored_dates = store.get_stored_dates()
+    effective_date = trade_date or (stored_dates[-1] if stored_dates else None)
+
+    if not effective_date:
+        payload = SpreadsPayload(
+            total_pairs=0,
+            summary_kpi_pair=None,
+            zscore_status={"z_score": None, "status": "UNAVAILABLE", "reason": "No market observations loaded"},
+            pairs=[],
+        )
+        return ResponseEnvelope[SpreadsPayload](
+            data_status=DataStatus.UNAVAILABLE,
+            as_of=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            source_mode="RELATIVE_VALUE_ENGINE",
+            payload=payload,
+        )
+
+    records = store.query(from_date=effective_date, to_date=effective_date)
+    by_key = {f"{r['symbol']}_{r['raw_expiry']}": r for r in records}
+
+    all_pairs: List[Dict[str, Any]] = []
+    # Build pairs across available records
+    symbols = ["GOLDTEN", "GOLDGUINEA", "GOLDPETAL", "GOLDM"]
+    for i in range(len(records)):
+        for j in range(i + 1, len(records)):
+            r_a = records[i]
+            r_b = records[j]
+
+            if symbol_a and r_a["symbol"] != symbol_a.upper():
+                continue
+            if symbol_b and r_b["symbol"] != symbol_b.upper():
+                continue
+            if expiry and (r_a["expiry_date"] != expiry and r_b["expiry_date"] != expiry):
+                continue
+
+            pair_res = compute_pair_spread(r_a, r_b, specs)
+            all_pairs.append(pair_res)
+
+    # Dedicated KPI summary pair: same-expiry GOLDTEN vs GOLDGUINEA on 30OCT2026
+    summary_pair = None
+    kpi_rec_ten = by_key.get("GOLDTEN_30OCT2026")
+    kpi_rec_guinea = by_key.get("GOLDGUINEA_30OCT2026")
+    if kpi_rec_ten and kpi_rec_guinea:
+        summary_pair = compute_pair_spread(kpi_rec_ten, kpi_rec_guinea, specs)
+    elif all_pairs:
+        # fallback to first eligible same-expiry pair
+        same_exp = [p for p in all_pairs if p["is_same_expiry"] and p["is_eligible"]]
+        summary_pair = same_exp[0] if same_exp else all_pairs[0]
+
+    # Z-Score check for the summary pair across history
+    historical_spreads: List[float] = []
+    if summary_pair:
+        sym_1 = summary_pair["symbol_a"]
+        sym_2 = summary_pair["symbol_b"]
+        raw_exp_1 = summary_pair["raw_expiry_a"]
+        raw_exp_2 = summary_pair["raw_expiry_b"]
+
+        all_history = store.read_all()
+        if not all_history.empty:
+            dates = sorted(all_history["trade_date"].unique())
+            for d in dates:
+                sub = all_history[all_history["trade_date"] == d]
+                m1 = sub[(sub["symbol"] == sym_1) & (sub["raw_expiry"] == raw_exp_1)]
+                m2 = sub[(sub["symbol"] == sym_2) & (sub["raw_expiry"] == raw_exp_2)]
+                if not m1.empty and not m2.empty:
+                    p1 = m1["normalized_close_10g_999"].iloc[0]
+                    p2 = m2["normalized_close_10g_999"].iloc[0]
+                    st1 = m1["trading_status"].iloc[0]
+                    st2 = m2["trading_status"].iloc[0]
+                    if pd.notna(p1) and pd.notna(p2) and st1 != "NO_TRADE" and st2 != "NO_TRADE":
+                        historical_spreads.append(round(float(p1 - p2), 2))
+
+    z_res = compute_point_in_time_zscore(historical_spreads, min_samples=min_samples)
+
+    payload = SpreadsPayload(
+        total_pairs=len(all_pairs),
+        summary_kpi_pair=summary_pair,
+        zscore_status=z_res,
+        pairs=all_pairs,
+    )
+
+    data_status = DataStatus.MANUAL_IMPORT if len(all_pairs) > 0 else DataStatus.UNAVAILABLE
+
+    return ResponseEnvelope[SpreadsPayload](
+        data_status=data_status,
+        as_of=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        source_mode="RELATIVE_VALUE_ENGINE",
+        validation_summary={
+            "trade_date": effective_date,
+            "total_pairs_evaluated": len(all_pairs),
+            "zscore_status": z_res["status"],
+        },
+        assumptions=[
+            "Point-in-time Z-score computed up to t-1; requires >=30 consecutive trading days",
+            "Pairs involving GOLDPETAL embed location basis differential (ex-Mumbai vs ex-Ahmedabad)",
+            "Observed gap is unverified metal-content difference, NOT an executable signal",
+        ],
+        provenance_ids=["backend/analytics/relative_value.py"],
+        payload=payload,
+    )
+
+
+@app.get("/curve", response_model=ResponseEnvelope[CurvePayload])
+def get_curve(
+    trade_date: Optional[str] = Query(None, description="Trade date (YYYY-MM-DD). Defaults to latest session."),
+    symbol: str = Query("GOLDM", description="Contract symbol (GOLDM, GOLDTEN, GOLDGUINEA, GOLDPETAL)"),
+) -> ResponseEnvelope[CurvePayload]:
+    store = get_parquet_store()
+    stored_dates = store.get_stored_dates()
+    effective_date = trade_date or (stored_dates[-1] if stored_dates else None)
+
+    if not effective_date:
+        payload = CurvePayload(
+            trade_date="",
+            symbol=symbol.upper(),
+            expiries_count=0,
+            points=[],
+            rolls=[],
+        )
+        return ResponseEnvelope[CurvePayload](
+            data_status=DataStatus.UNAVAILABLE,
+            as_of=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            source_mode="CURVE_ENGINE",
+            payload=payload,
+        )
+
+    curve_res = compute_symbol_curve(effective_date, symbol.upper())
+    payload = CurvePayload(**curve_res)
+
+    data_status = DataStatus.MANUAL_IMPORT if curve_res["expiries_count"] > 0 else DataStatus.UNAVAILABLE
+
+    return ResponseEnvelope[CurvePayload](
+        data_status=data_status,
+        as_of=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        source_mode="CURVE_ENGINE",
+        validation_summary={
+            "symbol": symbol.upper(),
+            "trade_date": effective_date,
+            "listed_expiries_observed": curve_res["expiries_count"],
+        },
+        assumptions=[
+            "Implied carry annualized as ((P_far / P_near) - 1) * (365 / calendar_days)",
+            "Term structure reflects discrete listed expiries without curve smoothing",
+        ],
+        provenance_ids=["backend/analytics/curve.py"],
+        payload=payload,
+    )
+
+
+@app.get("/liquidity", response_model=ResponseEnvelope[LiquidityPayload])
+def get_liquidity(
+    symbol: str = Query("GOLDTEN", description="Contract symbol"),
+    expiry_date: str = Query("2026-10-30", description="Contract expiry date (YYYY-MM-DD)"),
+) -> ResponseEnvelope[LiquidityPayload]:
+    liq_res = compute_contract_liquidity_series(symbol.upper(), expiry_date)
+    payload = LiquidityPayload(
+        symbol=symbol.upper(),
+        expiry_date=expiry_date,
+        observations_count=liq_res.get("observations_count", 0),
+        disclaimer=liq_res.get("disclaimer", "Corwin-Schultz daily OHLC liquidity proxy"),
+        results=liq_res.get("results", []),
+    )
+
+    data_status = DataStatus.MANUAL_IMPORT if payload.observations_count > 0 else DataStatus.UNAVAILABLE
+
+    return ResponseEnvelope[LiquidityPayload](
+        data_status=data_status,
+        as_of=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        source_mode="LIQUIDITY_PROXY_ENGINE",
+        validation_summary={
+            "symbol": symbol.upper(),
+            "expiry_date": expiry_date,
+            "observations_evaluated": payload.observations_count,
+        },
+        assumptions=[
+            "Corwin-Schultz (2012) high-low spread estimator is a daily proxy, NOT an executable bid-ask spread",
+            "Negative estimates indicate unestimable liquidity and trigger fallback cost hurdles",
+            "Zero volume (NO_TRADE) sessions are strictly excluded from estimation",
+        ],
+        provenance_ids=["backend/analytics/liquidity.py"],
+        payload=payload,
+    )
+
+
+@app.get("/diagnostics/offset", response_model=ResponseEnvelope[OffsetDiagnosticPayload])
+def get_offset_diagnostic(
+    target_expiry: Optional[str] = Query("2026-10-30", description="Target contract expiry date (YYYY-MM-DD)"),
+    from_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    to_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+) -> ResponseEnvelope[OffsetDiagnosticPayload]:
+    diag_res = compute_offset_diagnostics(target_expiry=target_expiry, from_date=from_date, to_date=to_date)
+    payload = OffsetDiagnosticPayload(**diag_res)
+
+    data_status = DataStatus.MANUAL_IMPORT if payload.observations_count > 0 else DataStatus.UNAVAILABLE
+
+    return ResponseEnvelope[OffsetDiagnosticPayload](
+        data_status=data_status,
+        as_of=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        source_mode="OFFSET_DIAGNOSTIC_ENGINE",
+        validation_summary={
+            "target_expiry": target_expiry,
+            "observations_count": payload.observations_count,
+        },
+        assumptions=[
+            "Diagnostic is strictly descriptive: 'observed gap, unverified, not a signal'",
+            "Makes no prediction of statistical arbitrage, mean reversion, or convergence",
+            "Days to tender start derived from conservative earliest tender policy",
+        ],
+        provenance_ids=["backend/analytics/offset_diagnostic.py"],
         payload=payload,
     )
