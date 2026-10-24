@@ -40,6 +40,9 @@ import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 
+// Development flag to control display of roadmap phase badges
+const SHOW_DEV_PHASE_BADGES = false
+
 // Navigation items configuration
 const data = {
   user: {
@@ -72,31 +75,31 @@ const data = {
       title: "Contracts & Prices",
       url: "/dashboard#contracts",
       icon: <LayersMinimalisticIcon className="size-4" />,
-      badge: "Slice",
+      badge: SHOW_DEV_PHASE_BADGES ? "Slice" : undefined,
     },
     {
       title: "Contract Calendar",
       url: "/dashboard#calendar",
       icon: <CalendarIcon className="size-4" />,
-      badge: "P1",
+      badge: SHOW_DEV_PHASE_BADGES ? "P1" : undefined,
     },
     {
       title: "Spreads & Carry",
       url: "/dashboard#spreads",
       icon: <Chart2Icon className="size-4" />,
-      badge: "P2",
+      badge: SHOW_DEV_PHASE_BADGES ? "P2" : undefined,
     },
     {
       title: "Backtest",
       url: "/dashboard#backtest",
       icon: <FolderKanbanIcon className="size-4" />,
-      badge: "P3",
+      badge: SHOW_DEV_PHASE_BADGES ? "P3" : undefined,
     },
     {
       title: "Quiet Mode Alerts",
       url: "/dashboard#alerts",
       icon: <ChecklistIcon className="size-4" />,
-      badge: "P5",
+      badge: SHOW_DEV_PHASE_BADGES ? "P5" : undefined,
     },
   ],
   navSecondary: [
@@ -104,7 +107,7 @@ const data = {
       title: "Data Quality Log",
       url: "/dashboard#data-quality",
       icon: <SettingsMinimalisticIcon className="size-4" />,
-      badge: "P1",
+      badge: SHOW_DEV_PHASE_BADGES ? "P1" : undefined,
     },
     {
       title: "MCX Rules (Unverified)",

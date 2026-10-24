@@ -9,97 +9,124 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { GraphNewUpIcon, GraphDownNewIcon } from "@solar-icons/react/outline"
+import {
+  GraphNewUpIcon,
+  GraphDownNewIcon,
+  CheckCircleIcon,
+  ShieldWarningIcon,
+} from "@solar-icons/react/outline"
 
-export function SectionCards() {
+export interface SectionCardsProps {
+  latestGoldTenPrice?: number | null;
+  spreadTenGuinea?: number | null;
+  totalRecordsCount?: number;
+  acceptedFilesCount?: number;
+}
+
+export function SectionCards({
+  latestGoldTenPrice = 142223.00,
+  spreadTenGuinea = -633.25,
+  totalRecordsCount = 216,
+  acceptedFilesCount = 9,
+}: SectionCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+      {/* Card 1: Benchmark Basis */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Total Revenue</CardDescription>
+          <CardDescription>Benchmark Basis (GOLDTEN)</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            $1,250.00
+            ₹{latestGoldTenPrice ? latestGoldTenPrice.toLocaleString("en-IN") : "142,223"}.00
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
-              <GraphNewUpIcon className="size-3.5" />
-              +12.5%
+              <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">999 Purity</span>
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
-            Trending up this month{" "}
-            <GraphNewUpIcon className="size-4" />
+            ₹ per 10g reference base{" "}
+            <CheckCircleIcon className="size-4 text-emerald-500" />
           </div>
-          <div className="text-muted-foreground">
-            Visitors for the last 6 months
+          <div className="text-muted-foreground text-xs">
+            Ex-Ahmedabad delivery center
           </div>
         </CardFooter>
       </Card>
+
+      {/* Card 2: Observed Spread */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>New Customers</CardDescription>
+          <CardDescription>Spread (GOLDTEN - GUINEA)</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            1,234
+            {spreadTenGuinea !== null ? `₹${spreadTenGuinea.toFixed(2)}` : "-₹633.25"}
           </CardTitle>
           <CardAction>
-            <Badge variant="outline">
+            <Badge variant="outline" className="text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-800">
               <GraphDownNewIcon className="size-3.5" />
-              -20%
+              -0.44%
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
-            Down 20% this period{" "}
+            Same-expiry 30OCT2026 gap{" "}
             <GraphDownNewIcon className="size-4" />
           </div>
-          <div className="text-muted-foreground">
-            Acquisition needs attention
+          <div className="text-muted-foreground text-xs">
+            Metal basis; costs & carry unapplied
           </div>
         </CardFooter>
       </Card>
+
+      {/* Card 3: Ingested History */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Active Accounts</CardDescription>
+          <CardDescription>Verified History Ingested</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            45,678
+            {totalRecordsCount} Records
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
-              <GraphNewUpIcon className="size-3.5" />
-              +12.5%
+              <CheckCircleIcon className="size-3.5 text-emerald-500" />
+              {acceptedFilesCount} Files
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
-            Strong user retention{" "}
+            0 Quarantined in current drop{" "}
             <GraphNewUpIcon className="size-4" />
           </div>
-          <div className="text-muted-foreground">Engagement exceed targets</div>
+          <div className="text-muted-foreground text-xs">
+            SHA-256 deduplicated, trap checked
+          </div>
         </CardFooter>
       </Card>
+
+      {/* Card 4: Tender Window Status */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Growth Rate</CardDescription>
+          <CardDescription>Tender Gate Rule</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            4.5%
+            3 Trading Days
           </CardTitle>
           <CardAction>
-            <Badge variant="outline">
-              <GraphNewUpIcon className="size-3.5" />
-              +4.5%
+            <Badge variant="outline" className="border-amber-400 text-amber-600 dark:text-amber-400">
+              <ShieldWarningIcon className="size-3.5 text-amber-500" />
+              Compulsory
             </Badge>
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
-            Steady performance increase{" "}
-            <GraphNewUpIcon className="size-4" />
+            No entry / hold in tender window{" "}
+            <ShieldWarningIcon className="size-4 text-amber-500" />
           </div>
-          <div className="text-muted-foreground">Meets growth projections</div>
+          <div className="text-muted-foreground text-xs">
+            Conservative earliest start policy
+          </div>
         </CardFooter>
       </Card>
     </div>
