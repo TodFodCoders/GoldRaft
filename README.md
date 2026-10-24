@@ -18,7 +18,7 @@ Because their raw quotations are not directly comparable, **GoldRaft**:
 2. **Normalizes** all contracts to a single metal-content basis (₹ per 10 g at 999 purity) without overwriting observed market quotes.
 3. **Measures Relative Value** with point-in-time rolling z-scores, isolating calendar carry roll-down and highlighting location basis divergences (Ahmedabad vs. Mumbai).
 4. **Applies Realistic Trading Friction** including statutory exchange/SEBI/CTT/stamp fees, broker charges, and a Corwin-Schultz (2012) bid-ask liquidity proxy.
-5. **Simulates Walk-Forward Out-of-Sample Performance** with strict execution rules ($t+1$ Open fill), compulsory physical delivery tender window blackouts, and 3-way independent P&L attribution (Gold Delta, Carry, Alpha minus Costs).
+5. **Simulates Walk-Forward Out-of-Sample Performance** with strict execution rules (t+1 Open fill), compulsory physical delivery tender window blackouts, and 3-way independent P&L attribution (Gold Delta, Carry, Alpha minus Costs).
 6. **Enforces Quiet Mode Alerts**: Emits signals only when expected convergence exceeds the full cost hurdle.
 
 ### Core Philosophy
@@ -83,7 +83,7 @@ pip install -r requirements.txt
 pytest -q
 
 # Start FastAPI development server
-uvicorn backend.api.main:app --reload --port 8000
+uvicorn backend.api.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 ---
