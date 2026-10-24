@@ -1,236 +1,382 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
 
-import { useIsMobile } from "@/hooks/use-mobile"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group"
 import type { PriceRecord } from "@/lib/api"
 
-export const description = "Normalized Gold Futures Prices (₹ per 10g at 999 Purity)"
-
-const chartConfig = {
-  GOLDTEN: {
-    label: "GOLDTEN (10g, 999)",
-    color: "hsl(var(--primary))",
-  },
-  GOLDGUINEA: {
-    label: "GOLDGUINEA (8g, 999)",
-    color: "#eab308",
-  },
-  GOLDM: {
-    label: "GOLDM (10g, 995 scaled)",
-    color: "#10b981",
-  },
-  GOLDPETAL: {
-    label: "GOLDPETAL (1g, 999, Mumbai)",
-    color: "#6366f1",
-  },
-} satisfies ChartConfig
+const CONTRACT_COLORS: Record<string, string> = {
+  GOLDTEN: "#3b82f6", // Blue
+  GOLDGUINEA: "#eab308", // Yellow / Gold
+  GOLDM: "#10b981", // Emerald
+  GOLDPETAL: "#a855f7", // Purple (Mumbai basis)
+}
 
 interface ChartAreaInteractiveProps {
   records?: PriceRecord[];
 }
 
-interface ChartDataPoint {
-  date: string;
-  GOLDTEN?: number;
-  GOLDGUINEA?: number;
-  GOLDM?: number;
-  GOLDPETAL?: number;
-}
-
 export function ChartAreaInteractive({ records = [] }: ChartAreaInteractiveProps) {
-  const isMobile = useIsMobile()
-  const [selectedRange, setSelectedRange] = React.useState<string | null>(null)
-  const timeRange = selectedRange ?? (isMobile ? "7d" : "90d")
+  const [viewMode, setViewMode] = React.useState<"curve_snapshot" | "same_contract_time">("curve_snapshot")
 
-  // Transform records into chart data grouped by trade_date
-  const chartData: ChartDataPoint[] = React.useMemo(() => {
-    if (!records || records.length === 0) {
-      // Fallback sample data using real normalized values from the 9 files
-      return [
-        { date: "2025-10-16", GOLDTEN: 138500, GOLDGUINEA: 138800, GOLDM: 138250, GOLDPETAL: 138820 },
-        { date: "2026-06-09", GOLDTEN: 140100, GOLDGUINEA: 140650, GOLDM: 140050, GOLDPETAL: 140680 },
-        { date: "2026-07-01", GOLDTEN: 141200, GOLDGUINEA: 141800, GOLDM: 141150, GOLDPETAL: 141820 },
-        { date: "2026-09-01", GOLDTEN: 141900, GOLDGUINEA: 142450, GOLDM: 141850, GOLDPETAL: 142480 },
-        { date: "2026-10-01", GOLDTEN: 142100, GOLDGUINEA: 142680, GOLDM: 142050, GOLDPETAL: 142700 },
-        { date: "2026-10-15", GOLDTEN: 142150, GOLDGUINEA: 142750, GOLDM: 142100, GOLDPETAL: 142760 },
-        { date: "2026-10-21", GOLDTEN: 142200, GOLDGUINEA: 142820, GOLDM: 142350, GOLDPETAL: 142850 },
-        { date: "2026-10-22", GOLDTEN: 142223, GOLDGUINEA: 142856.25, GOLDM: 142372.06, GOLDPETAL: 142870 },
-        { date: "2026-10-23", GOLDTEN: 142510, GOLDGUINEA: 143120, GOLDM: 142620, GOLDPETAL: 143150 },
-      ]
-    }
-
-    const byDate: Record<string, ChartDataPoint> = {}
-    for (const r of records) {
-      if (!r.normalized_close_10g_999) continue
-      const d = r.trade_date
-      if (!byDate[d]) byDate[d] = { date: d }
-      // Keep near-month or first expiry seen
-      const sym = r.symbol as keyof Omit<ChartDataPoint, "date">
-      if (!byDate[d][sym]) {
-        byDate[d][sym] = r.normalized_close_10g_999
-      }
-    }
-
-    return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date))
+  // Extract all distinct trade dates sorted descending (latest first)
+  const availableTradeDates = React.useMemo(() => {
+    const dates = Array.from(new Set(records.map((r) => r.trade_date)))
+    return dates.sort((a, b) => b.localeCompare(a))
   }, [records])
 
-  const filteredData = chartData
+  // Extract all distinct expiry groups (e.g. "30OCT2026", "05NOV2026")
+  const availableExpiries = React.useMemo(() => {
+    const exps = Array.from(new Set(records.map((r) => r.raw_expiry || r.expiry_date)))
+    return exps.sort()
+  }, [records])
+
+  const [userSelectedTradeDate, setUserSelectedTradeDate] = React.useState<string | null>(null)
+  const [userSelectedExpiry, setUserSelectedExpiry] = React.useState<string | null>(null)
+
+  const selectedTradeDate =
+    userSelectedTradeDate && availableTradeDates.includes(userSelectedTradeDate)
+      ? userSelectedTradeDate
+      : availableTradeDates[0] || ""
+
+  const selectedExpiry =
+    userSelectedExpiry && availableExpiries.includes(userSelectedExpiry)
+      ? userSelectedExpiry
+      : availableExpiries.includes("30OCT2026")
+        ? "30OCT2026"
+        : availableExpiries[0] || ""
+
+  // 1. DATA FOR VIEW A: Curve Snapshot across expiries on a chosen trade date
+  const snapshotData = React.useMemo(() => {
+    if (!selectedTradeDate || records.length === 0) return []
+    const dayRecords = records.filter(
+      (r) => r.trade_date === selectedTradeDate && r.normalized_close_10g_999 !== null
+    )
+
+    // Group by expiry
+    const byExpiry: Record<string, { expiry: string; expiry_date: string; [symbol: string]: unknown }> = {}
+    for (const r of dayRecords) {
+      const expKey = r.raw_expiry || r.expiry_date
+      if (!byExpiry[expKey]) {
+        byExpiry[expKey] = { expiry: expKey, expiry_date: r.expiry_date }
+      }
+      byExpiry[expKey][r.symbol] = r.normalized_close_10g_999
+    }
+
+    return Object.values(byExpiry).sort((a, b) =>
+      a.expiry_date.localeCompare(b.expiry_date)
+    )
+  }, [records, selectedTradeDate])
+
+  // 2. DATA FOR VIEW B: Same Contract Over Time across actual trade dates
+  const timeSeriesData = React.useMemo(() => {
+    if (!selectedExpiry || records.length === 0) return []
+    const expRecords = records.filter(
+      (r) =>
+        (r.raw_expiry === selectedExpiry || r.expiry_date === selectedExpiry) &&
+        r.normalized_close_10g_999 !== null
+    )
+
+    const byDate: Record<string, { trade_date: string; [symbol: string]: unknown }> = {}
+    for (const r of expRecords) {
+      const d = r.trade_date
+      if (!byDate[d]) {
+        byDate[d] = { trade_date: d }
+      }
+      byDate[d][r.symbol] = r.normalized_close_10g_999
+    }
+
+    return Object.values(byDate).sort((a, b) =>
+      a.trade_date.localeCompare(b.trade_date)
+    )
+  }, [records, selectedExpiry])
+
+  if (records.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-bold">Futures Curve Analytics</CardTitle>
+          <CardDescription>No contract observations available in database.</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  const distinctTradingDaysCount = availableTradeDates.length
 
   return (
-    <Card className="@container/card">
-      <CardHeader>
-        <div className="flex flex-col gap-1">
-          <CardTitle className="text-base sm:text-lg">
-            Normalized Gold Futures Prices (₹ / 10g at 999 Purity)
-          </CardTitle>
+    <Card className="border shadow-none">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base font-bold">
+              {viewMode === "curve_snapshot"
+                ? `Curve Snapshot — Session ${selectedTradeDate || "Latest"}`
+                : `Contract History — ${selectedExpiry || "Selected Expiry"}`}
+            </CardTitle>
+            <Badge variant="outline" className="text-[10px]">
+              ₹ per 10g at 999
+            </Badge>
+          </div>
           <CardDescription className="text-xs">
-            Metal-content comparison basis for GOLDM, GOLDTEN, GOLDGUINEA, and GOLDPETAL (Observed Bhavcopy Quotes)
+            {viewMode === "curve_snapshot"
+              ? "Discrete term structure across listed expiries; straight segments without curve smoothing."
+              : "Isolated historical observations over true time axis; gaps visible across missing dates."}
           </CardDescription>
         </div>
-        <CardAction>
-          <ToggleGroup
-            multiple={false}
-            value={timeRange ? [timeRange] : []}
-            onValueChange={(value) => {
-              if (value[0]) {
-                setSelectedRange(value[0])
-              }
-            }}
-            variant="outline"
-            className="hidden *:data-[slot=toggle-group-item]:px-3! @[767px]/card:flex text-xs"
-          >
-            <ToggleGroupItem value="all">All Dates</ToggleGroupItem>
-            <ToggleGroupItem value="30d">Last 30 Days</ToggleGroupItem>
-            <ToggleGroupItem value="7d">Latest Session</ToggleGroupItem>
-          </ToggleGroup>
-          <Select
-            value={timeRange}
-            onValueChange={(value) => {
-              if (value !== null) {
-                setSelectedRange(value)
-              }
-            }}
-          >
-            <SelectTrigger
-              className="flex w-36 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
+
+        {/* View Switcher and Filter Controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center rounded-lg border bg-muted/40 p-1">
+            <Button
+              variant={viewMode === "curve_snapshot" ? "secondary" : "ghost"}
               size="sm"
-              aria-label="Select date range"
+              className="h-7 text-xs px-2.5"
+              onClick={() => setViewMode("curve_snapshot")}
             >
-              <SelectValue placeholder="All Dates" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="all" className="rounded-lg">
-                All Dates
-              </SelectItem>
-              <SelectItem value="30d" className="rounded-lg">
-                Last 30 Days
-              </SelectItem>
-              <SelectItem value="7d" className="rounded-lg">
-                Latest Session
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </CardAction>
+              Curve Snapshot
+            </Button>
+            <Button
+              variant={viewMode === "same_contract_time" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 text-xs px-2.5"
+              onClick={() => setViewMode("same_contract_time")}
+            >
+              Same Contract Over Time
+            </Button>
+          </div>
+
+          {/* Selector Dropdown */}
+          {viewMode === "curve_snapshot" ? (
+            <select
+              aria-label="Select Trade Session"
+              className="rounded border border-input bg-background px-2.5 py-1 text-xs font-mono"
+              value={selectedTradeDate}
+              onChange={(e) => setUserSelectedTradeDate(e.target.value)}
+            >
+              {availableTradeDates.map((d) => (
+                <option key={d} value={d}>
+                  Session: {d}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <select
+              aria-label="Select Contract Expiry"
+              className="rounded border border-input bg-background px-2.5 py-1 text-xs font-mono"
+              value={selectedExpiry}
+              onChange={(e) => setUserSelectedExpiry(e.target.value)}
+            >
+              {availableExpiries.map((exp) => (
+                <option key={exp} value={exp}>
+                  Expiry: {exp}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       </CardHeader>
-      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <ChartContainer
-          config={chartConfig}
-          className="aspect-auto h-[260px] w-full"
-        >
-          <AreaChart data={filteredData}>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={24}
-              tickFormatter={(value) => {
-                const date = new Date(value)
-                return date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })
-              }}
-            />
-            <YAxis
-              domain={["dataMin - 1000", "dataMax + 1000"]}
-              hide={isMobile}
-              tickFormatter={(val) => `₹${Math.round(val / 1000)}k`}
-              tickLine={false}
-              axisLine={false}
-              width={65}
-            />
-            <ChartTooltip
-              cursor={{ stroke: "var(--color-foreground)", strokeWidth: 1 }}
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(value) => `Trade Date: ${value}`}
-                  indicator="dot"
-                />
-              }
-            />
-            <Area
-              dataKey="GOLDGUINEA"
-              type="monotone"
-              fill="#eab308"
-              fillOpacity={0.1}
-              stroke="#eab308"
-              strokeWidth={2}
-            />
-            <Area
-              dataKey="GOLDPETAL"
-              type="monotone"
-              fill="#6366f1"
-              fillOpacity={0.08}
-              stroke="#6366f1"
-              strokeWidth={2}
-            />
-            <Area
-              dataKey="GOLDM"
-              type="monotone"
-              fill="#10b981"
-              fillOpacity={0.1}
-              stroke="#10b981"
-              strokeWidth={2}
-            />
-            <Area
-              dataKey="GOLDTEN"
-              type="monotone"
-              fill="hsl(var(--primary))"
-              fillOpacity={0.15}
-              stroke="hsl(var(--primary))"
-              strokeWidth={2.5}
-            />
-          </AreaChart>
-        </ChartContainer>
+
+      <CardContent className="pt-2">
+        {/* VIEW A: Curve Snapshot */}
+        {viewMode === "curve_snapshot" && (
+          <div className="space-y-2">
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={snapshotData}
+                  margin={{ top: 15, right: 25, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis
+                    dataKey="expiry"
+                    tick={{ fontSize: 11 }}
+                    tickMargin={8}
+                  />
+                  <YAxis
+                    domain={["auto", "auto"]}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(val) => `₹${(val / 1000).toFixed(1)}k`}
+                    width={65}
+                  />
+                  <Tooltip
+                    formatter={(val: unknown, name: unknown) => [
+                      typeof val === "number" ? `₹${val.toFixed(2)} / 10g` : String(val ?? "—"),
+                      name === "GOLDPETAL" ? "GOLDPETAL (Mumbai basis)" : String(name ?? ""),
+                    ]}
+                    labelFormatter={(label) => `Contract Expiry: ${label}`}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="GOLDM"
+                    name="GOLDM"
+                    stroke={CONTRACT_COLORS.GOLDM}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    connectNulls={false}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="GOLDTEN"
+                    name="GOLDTEN"
+                    stroke={CONTRACT_COLORS.GOLDTEN}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    connectNulls={false}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="GOLDGUINEA"
+                    name="GOLDGUINEA"
+                    stroke={CONTRACT_COLORS.GOLDGUINEA}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    connectNulls={false}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="GOLDPETAL"
+                    name="GOLDPETAL"
+                    stroke={CONTRACT_COLORS.GOLDPETAL}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    connectNulls={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap items-center justify-between text-xs text-muted-foreground pt-1 border-t">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="size-2 rounded-full bg-emerald-500 inline-block" /> GOLDM
+                </span>
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="size-2 rounded-full bg-blue-500 inline-block" /> GOLDTEN
+                </span>
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="size-2 rounded-full bg-yellow-500 inline-block" /> GOLDGUINEA
+                </span>
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="size-2 rounded-full bg-purple-500 inline-block" /> GOLDPETAL (Mumbai)
+                </span>
+              </div>
+              <span className="font-mono text-[11px]">
+                Only {distinctTradingDaysCount} trading days loaded; not a continuous series.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW B: Same Contract Over Time */}
+        {viewMode === "same_contract_time" && (
+          <div className="space-y-2">
+            {timeSeriesData.length < 3 && (
+              <div className="rounded border bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300">
+                Only {timeSeriesData.length} observations loaded for {selectedExpiry}. Insufficient points to establish a continuous trajectory.
+              </div>
+            )}
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={timeSeriesData}
+                  margin={{ top: 15, right: 25, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis
+                    dataKey="trade_date"
+                    tick={{ fontSize: 11 }}
+                    tickMargin={8}
+                  />
+                  <YAxis
+                    domain={["auto", "auto"]}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(val) => `₹${(val / 1000).toFixed(1)}k`}
+                    width={65}
+                  />
+                  <Tooltip
+                    formatter={(val: unknown, name: unknown) => [
+                      typeof val === "number" ? `₹${val.toFixed(2)} / 10g` : String(val ?? "—"),
+                      name === "GOLDPETAL" ? "GOLDPETAL (Mumbai basis)" : String(name ?? ""),
+                    ]}
+                    labelFormatter={(label) => `Session Date: ${label} (Expiry ${selectedExpiry})`}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="GOLDM"
+                    name="GOLDM"
+                    stroke={CONTRACT_COLORS.GOLDM}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    connectNulls={false}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="GOLDTEN"
+                    name="GOLDTEN"
+                    stroke={CONTRACT_COLORS.GOLDTEN}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    connectNulls={false}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="GOLDGUINEA"
+                    name="GOLDGUINEA"
+                    stroke={CONTRACT_COLORS.GOLDGUINEA}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    connectNulls={false}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="GOLDPETAL"
+                    name="GOLDPETAL"
+                    stroke={CONTRACT_COLORS.GOLDPETAL}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    connectNulls={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap items-center justify-between text-xs text-muted-foreground pt-1 border-t">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="size-2 rounded-full bg-emerald-500 inline-block" /> GOLDM
+                </span>
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="size-2 rounded-full bg-blue-500 inline-block" /> GOLDTEN
+                </span>
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="size-2 rounded-full bg-yellow-500 inline-block" /> GOLDGUINEA
+                </span>
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="size-2 rounded-full bg-purple-500 inline-block" /> GOLDPETAL (Mumbai)
+                </span>
+              </div>
+              <span className="font-mono text-[11px]">
+                Only {distinctTradingDaysCount} trading days loaded; not a continuous series.
+              </span>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -71,7 +71,6 @@ import {
 } from "@/components/ui/table"
 import {
   GripVerticalIcon,
-  CheckCircleIcon,
   Columns3Icon,
   AltArrowDownIcon,
   ShieldWarningIcon,
@@ -113,6 +112,14 @@ const features = tableFeatures({
 })
 
 const columnHelper = createColumnHelper<typeof features, ContractRow>()
+
+function formatINR(val: number | null): string {
+  if (val === null || val === undefined) return "—"
+  if (val < 0) {
+    return `-₹${Math.abs(val).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+  return `₹${val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
 
 function DragHandle({ id }: { id: string }) {
   const { attributes, listeners } = useSortable({ id })
@@ -173,7 +180,7 @@ function TableCellViewer({ item }: { item: ContractRow }) {
             <div className="rounded-lg border p-3 bg-muted/20 space-y-1">
               <span className="text-[11px] text-muted-foreground font-medium">Observed Close</span>
               <div className="text-lg font-bold">
-                {item.close !== null ? `₹${item.close.toLocaleString("en-IN")}` : "N/A"}
+                {formatINR(item.close)}
               </div>
               <span className="text-[10px] text-muted-foreground">
                 Quoted per {item.symbol === "GOLDGUINEA" ? "8g" : item.symbol === "GOLDPETAL" ? "1g" : "10g"}
@@ -183,7 +190,7 @@ function TableCellViewer({ item }: { item: ContractRow }) {
             <div className="rounded-lg border p-3 bg-primary/5 space-y-1">
               <span className="text-[11px] text-muted-foreground font-medium">Normalized (₹/10g @ 999)</span>
               <div className="text-lg font-bold text-primary">
-                {item.normalized_close_10g_999 !== null ? `₹${item.normalized_close_10g_999.toLocaleString("en-IN")}` : "N/A"}
+                {formatINR(item.normalized_close_10g_999)}
               </div>
               <span className="text-[10px] text-muted-foreground">
                 {isPurityScaled ? "Scaled by 999/995" : "Exact 999 fineness"}
@@ -196,7 +203,7 @@ function TableCellViewer({ item }: { item: ContractRow }) {
           {/* Contract Specifications Table */}
           <div className="space-y-2">
             <span className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-              Contract Specification Sheet
+              Contract Specification Sheet (Unverified)
             </span>
             <div className="grid grid-cols-2 gap-y-2 rounded-lg border p-3 bg-background">
               <span className="text-muted-foreground">Trading Unit</span>
@@ -205,8 +212,8 @@ function TableCellViewer({ item }: { item: ContractRow }) {
               <span className="text-muted-foreground">Purity / Fineness</span>
               <span className="font-medium text-right">{item.symbol === "GOLDM" ? "995" : "999"}</span>
 
-              <span className="text-muted-foreground">Delivery Center</span>
-              <span className="font-medium text-right">{isMumbai ? "Mumbai (Location Basis Differs)" : "Ahmedabad"}</span>
+              <span className="text-muted-foreground">Quote Location</span>
+              <span className="font-medium text-right">{isMumbai ? "Mumbai" : "Ahmedabad"}</span>
 
               <span className="text-muted-foreground">Settlement Type</span>
               <span className="font-medium text-right text-rose-600 dark:text-rose-400 font-semibold">COMPULSORY DELIVERY</span>
@@ -214,7 +221,7 @@ function TableCellViewer({ item }: { item: ContractRow }) {
               <span className="text-muted-foreground">Tender Window</span>
               <span className="font-medium text-right">Last 3 trading days</span>
 
-              <span className="text-muted-foreground">Liquidity (Grams)</span>
+              <span className="text-muted-foreground">Volume (Grams)</span>
               <span className="font-medium text-right tabular-nums">{item.volume_grams.toLocaleString("en-IN")} g</span>
 
               <span className="text-muted-foreground">Open Interest</span>
@@ -279,6 +286,14 @@ const columns = columnHelper.columns([
     enableSorting: false,
     enableHiding: false,
   }),
+  columnHelper.accessor("trade_date", {
+    header: "Trade Date",
+    cell: ({ row }) => (
+      <span className="font-mono text-xs text-muted-foreground">
+        {row.original.trade_date}
+      </span>
+    ),
+  }),
   columnHelper.accessor("symbol", {
     header: "Contract Symbol",
     cell: ({ row }) => <TableCellViewer item={row.original} />,
@@ -297,7 +312,7 @@ const columns = columnHelper.columns([
     header: () => <div className="text-right">Observed Close</div>,
     cell: ({ row }) => (
       <div className="text-right font-mono font-medium">
-        {row.original.close !== null ? `₹${row.original.close.toLocaleString("en-IN")}` : "N/A"}
+        {formatINR(row.original.close)}
       </div>
     ),
   }),
@@ -305,9 +320,7 @@ const columns = columnHelper.columns([
     header: () => <div className="text-right text-primary font-bold">Normalized (₹/10g 999)</div>,
     cell: ({ row }) => (
       <div className="text-right font-mono font-bold text-primary">
-        {row.original.normalized_close_10g_999 !== null
-          ? `₹${row.original.normalized_close_10g_999.toLocaleString("en-IN")}`
-          : "N/A"}
+        {formatINR(row.original.normalized_close_10g_999)}
       </div>
     ),
   }),
@@ -340,11 +353,6 @@ const columns = columnHelper.columns([
               : "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10"
           }`}
         >
-          {isTrade ? (
-            <CheckCircleIcon className="size-3 mr-1" />
-          ) : (
-            <ShieldWarningIcon className="size-3 mr-1" />
-          )}
           {row.original.trading_status}
         </Badge>
       )
@@ -352,22 +360,19 @@ const columns = columnHelper.columns([
   }),
 ])
 
-function DraggableRow({
-  row,
-}: {
-  row: Row<typeof features, ContractRow>
-}) {
+function DraggableRow({ row }: { row: Row<typeof features, ContractRow> }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
     id: row.original.id,
   })
+
   return (
     <TableRow
+      ref={setNodeRef}
       data-state={row.getIsSelected() && "selected"}
       data-dragging={isDragging}
-      ref={setNodeRef}
       className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
       style={{
-        transform: CSS.Transform.toString(transform),
+        transform: CSS.Translate.toString(transform),
         transition: transition,
       }}
     >
@@ -380,30 +385,37 @@ function DraggableRow({
   )
 }
 
-export function DataTable({
-  data: initialData = [],
-}: {
-  data?: ContractRow[]
-}) {
-  const [data, setData] = React.useState<ContractRow[]>(() => initialData)
-  const [prevInitialData, setPrevInitialData] = React.useState<ContractRow[]>(initialData)
+export function DataTable({ data: initialData }: { data: ContractRow[] }) {
+  // Extract distinct trade dates sorted descending (latest first)
+  const availableTradeDates = React.useMemo(() => {
+    const dates = Array.from(new Set(initialData.map((d) => d.trade_date)))
+    return dates.sort((a, b) => b.localeCompare(a))
+  }, [initialData])
 
-  if (initialData !== prevInitialData) {
-    setPrevInitialData(initialData)
-    setData(initialData)
-  }
+  const [userSelectedSession, setUserSelectedSession] = React.useState<string | null>(null)
+  const selectedSession = userSelectedSession ?? (availableTradeDates[0] || "all")
 
+  // Filter data by selected trade date if not "all"
+  const filteredData = React.useMemo(() => {
+    if (selectedSession === "all") return initialData
+    return initialData.filter((r) => r.trade_date === selectedSession)
+  }, [initialData, selectedSession])
+
+  const [data, setData] = React.useState(() => filteredData)
+  const [prevFilteredData, setPrevFilteredData] = React.useState(() => filteredData)
   const [rowSelection, setRowSelection] = React.useState({})
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<ColumnVisibilityState>({})
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
+  const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({})
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
   })
+
+  if (prevFilteredData !== filteredData) {
+    setPrevFilteredData(filteredData)
+    setData(filteredData)
+  }
 
   const sortableId = React.useId()
   const sensors = useSensors(
@@ -411,6 +423,7 @@ export function DataTable({
     useSensor(TouchSensor, {}),
     useSensor(KeyboardSensor, {})
   )
+
   const dataIds = React.useMemo<UniqueIdentifier[]>(
     () => data?.map(({ id }) => id) || [],
     [data]
@@ -427,13 +440,12 @@ export function DataTable({
       columnFilters,
       pagination,
     },
-    getRowId: (row) => row.id,
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
+    getRowId: (row: ContractRow) => row.id,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
   })
 
   function handleDragEnd(event: DragEndEvent) {
@@ -449,15 +461,38 @@ export function DataTable({
 
   return (
     <div className="w-full flex flex-col gap-4 px-4 lg:px-6">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold tracking-tight">Active Contracts Matrix</span>
+          <span className="text-sm font-semibold tracking-tight">Contract observations</span>
           <Badge variant="outline" className="text-xs font-mono">
-            {data.length} Contracts
+            {filteredData.length} records
           </Badge>
+          {selectedSession !== "all" && (
+            <Badge variant="secondary" className="text-[10px] font-mono">
+              Session: {selectedSession}
+            </Badge>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Trade Date Selector */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground">Session:</span>
+            <select
+              aria-label="Filter observations by session date"
+              className="rounded border border-input bg-background px-2.5 py-1 text-xs font-mono"
+              value={selectedSession}
+              onChange={(e) => setUserSelectedSession(e.target.value)}
+            >
+              <option value="all">All Sessions ({initialData.length} total)</option>
+              {availableTradeDates.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="outline" size="sm" />}

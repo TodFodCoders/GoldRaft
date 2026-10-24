@@ -40,8 +40,8 @@ import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 
-// Development flag to control display of roadmap phase badges
-const SHOW_DEV_PHASE_BADGES = false
+// Single DEV_UI flag to control display of roadmap phase badges and experimental/mock controls (default OFF)
+export const DEV_UI = false
 
 // Navigation items configuration
 const data = {
@@ -75,31 +75,31 @@ const data = {
       title: "Contracts & Prices",
       url: "/dashboard#contracts",
       icon: <LayersMinimalisticIcon className="size-4" />,
-      badge: SHOW_DEV_PHASE_BADGES ? "Slice" : undefined,
+      badge: DEV_UI ? "Slice" : undefined,
     },
     {
       title: "Contract Calendar",
       url: "/dashboard#calendar",
       icon: <CalendarIcon className="size-4" />,
-      badge: SHOW_DEV_PHASE_BADGES ? "P1" : undefined,
+      badge: DEV_UI ? "P1" : undefined,
     },
     {
       title: "Spreads & Carry",
       url: "/dashboard#spreads",
       icon: <Chart2Icon className="size-4" />,
-      badge: SHOW_DEV_PHASE_BADGES ? "P2" : undefined,
+      badge: DEV_UI ? "P2" : undefined,
     },
     {
       title: "Backtest",
       url: "/dashboard#backtest",
       icon: <FolderKanbanIcon className="size-4" />,
-      badge: SHOW_DEV_PHASE_BADGES ? "P3" : undefined,
+      badge: DEV_UI ? "P3" : undefined,
     },
     {
       title: "Quiet Mode Alerts",
       url: "/dashboard#alerts",
       icon: <ChecklistIcon className="size-4" />,
-      badge: SHOW_DEV_PHASE_BADGES ? "P5" : undefined,
+      badge: DEV_UI ? "P5" : undefined,
     },
   ],
   navSecondary: [
@@ -107,7 +107,7 @@ const data = {
       title: "Data Quality Log",
       url: "/dashboard#data-quality",
       icon: <SettingsMinimalisticIcon className="size-4" />,
-      badge: SHOW_DEV_PHASE_BADGES ? "P1" : undefined,
+      badge: DEV_UI ? "P1" : undefined,
     },
     {
       title: "MCX Rules (Unverified)",
@@ -222,7 +222,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {DEV_UI ? (
+          <NavUser user={data.user} />
+        ) : (
+          <div className="px-3 py-2 text-[11px] font-mono text-muted-foreground border-t">
+            GoldRaft v0.1.0 • MCX Analytics
+          </div>
+        )}
       </SidebarFooter>
 
       <SidebarRail />

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AppSidebar } from "@/components/app-sidebar"
+import { AppSidebar, DEV_UI } from "@/components/app-sidebar"
 import { BottomDraggableTab } from "@/components/bottom-draggable-tab"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable, type ContractRow } from "@/components/data-table"
@@ -19,41 +19,58 @@ import {
   RestartCircleIcon,
   FolderKanbanIcon,
   LayersMinimalisticIcon,
+  Chart2Icon,
 } from "@solar-icons/react/outline"
 import {
   fetchPrices,
   fetchContracts,
   fetchCalendar,
   fetchDataQuality,
+  fetchSpreads,
+  fetchOffsetDiagnostic,
+  fetchCoverage,
   type PriceRecord,
   type ContractsPayload,
   type CalendarPayload,
   type DataQualityPayload,
+  type SpreadsPayload,
+  type OffsetDiagnosticPayload,
+  type CoveragePayload,
   type ResponseEnvelope,
 } from "@/lib/api"
 
 export default function Page() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+
   const [pricesEnvelope, setPricesEnvelope] = React.useState<ResponseEnvelope<{ records: PriceRecord[] }> | null>(null)
   const [contractsData, setContractsData] = React.useState<ContractsPayload | null>(null)
   const [calendarData, setCalendarData] = React.useState<CalendarPayload | null>(null)
   const [dataQualityData, setDataQualityData] = React.useState<DataQualityPayload | null>(null)
+  const [spreadsData, setSpreadsData] = React.useState<SpreadsPayload | null>(null)
+  const [offsetData, setOffsetData] = React.useState<OffsetDiagnosticPayload | null>(null)
+  const [coverageData, setCoverageData] = React.useState<CoveragePayload | null>(null)
 
   const reloadData = React.useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [pRes, cRes, calRes, dqRes] = await Promise.all([
+      const [pRes, cRes, calRes, dqRes, sRes, oRes, covRes] = await Promise.all([
         fetchPrices(),
         fetchContracts(),
         fetchCalendar(),
         fetchDataQuality(),
+        fetchSpreads(),
+        fetchOffsetDiagnostic("2026-10-30"),
+        fetchCoverage("2025-01-01"),
       ])
       setPricesEnvelope(pRes)
       setContractsData(cRes.payload)
       setCalendarData(calRes.payload)
       setDataQualityData(dqRes.payload)
+      setSpreadsData(sRes.payload)
+      setOffsetData(oRes.payload)
+      setCoverageData(covRes.payload)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to connect to backend server"
       setError(msg)
@@ -68,17 +85,23 @@ export default function Page() {
       setLoading(true)
       setError(null)
       try {
-        const [pRes, cRes, calRes, dqRes] = await Promise.all([
+        const [pRes, cRes, calRes, dqRes, sRes, oRes, covRes] = await Promise.all([
           fetchPrices(),
           fetchContracts(),
           fetchCalendar(),
           fetchDataQuality(),
+          fetchSpreads(),
+          fetchOffsetDiagnostic("2026-10-30"),
+          fetchCoverage("2025-01-01"),
         ])
         if (!ignore) {
           setPricesEnvelope(pRes)
           setContractsData(cRes.payload)
           setCalendarData(calRes.payload)
           setDataQualityData(dqRes.payload)
+          setSpreadsData(sRes.payload)
+          setOffsetData(oRes.payload)
+          setCoverageData(covRes.payload)
           setLoading(false)
         }
       } catch (err: unknown) {
@@ -98,7 +121,10 @@ export default function Page() {
   const records = React.useMemo(() => {
     return pricesEnvelope?.payload?.records || []
   }, [pricesEnvelope])
-  const isFixtureDemo = pricesEnvelope?.data_status === "FIXTURE/DEMO" || pricesEnvelope?.source_mode.includes("FIXTURE")
+
+  const isFixtureDemo =
+    pricesEnvelope?.data_status === "FIXTURE/DEMO" ||
+    (pricesEnvelope?.source_mode ? pricesEnvelope.source_mode.includes("FIXTURE") : false)
 
   // Convert price records to contract table rows
   const tableData: ContractRow[] = React.useMemo(() => {
@@ -120,12 +146,23 @@ export default function Page() {
     }))
   }, [records])
 
-  // Extract latest metrics for KPI cards
-  const latestTenRecord = records.find((r) => r.symbol === "GOLDTEN" && r.raw_expiry === "30OCT2026")
-  const latestGuineaRecord = records.find((r) => r.symbol === "GOLDGUINEA" && r.raw_expiry === "30OCT2026")
-  const spreadTenGuinea = (latestTenRecord?.normalized_close_10g_999 && latestGuineaRecord?.normalized_close_10g_999)
-    ? roundTo(latestTenRecord.normalized_close_10g_999 - latestGuineaRecord.normalized_close_10g_999, 2)
-    : -633.25
+  // Extract nearest-expiry GOLDTEN on the latest session (B2)
+  const benchmarkTenRecord = React.useMemo(() => {
+    if (records.length === 0) return null
+    // Find latest trade_date
+    const dates = records.map((r) => r.trade_date)
+    const latestDate = dates.reduce((max, d) => (d > max ? d : max), dates[0])
+
+    // Find GOLDTEN on latestDate with nearest expiry
+    const latestTenContracts = records
+      .filter((r) => r.trade_date === latestDate && r.symbol === "GOLDTEN" && r.close !== null)
+      .sort((a, b) => a.expiry_date.localeCompare(b.expiry_date))
+
+    return latestTenContracts.length > 0 ? latestTenContracts[0] : null
+  }, [records])
+
+  // Server-side computed spread pair for KPI card (B1)
+  const spreadKpiPair = spreadsData?.summary_kpi_pair || null
 
   return (
     <SidebarProvider
@@ -141,7 +178,7 @@ export default function Page() {
       <SidebarInset className="md:peer-data-[variant=inset]:mb-0 md:peer-data-[variant=inset]:rounded-b-none md:peer-data-[variant=inset]:shadow-none">
         <SiteHeader />
 
-        {/* Demo / Fixture Banner (Visible when source_mode != MANUAL IMPORT) */}
+        {/* Demo / Fixture Banner (Visible when source_mode == FIXTURE) */}
         {isFixtureDemo && (
           <div className="mx-4 lg:mx-6 mt-4 rounded-lg border-2 border-amber-500 bg-amber-500/15 p-3.5 text-amber-900 dark:text-amber-300 font-semibold text-xs flex items-center justify-between shadow-[2px_2px_0px_0px_var(--color-foreground)]">
             <div className="flex items-center gap-2">
@@ -156,27 +193,36 @@ export default function Page() {
           </div>
         )}
 
-        {/* Live Manual Import Verified Banner */}
+        {/* Manual Import Ingestion Status Banner (A2) */}
         {!isFixtureDemo && !error && !loading && (
           <div className="mx-4 lg:mx-6 mt-4 rounded-lg border-2 border-border bg-card p-3 text-xs flex items-center justify-between shadow-[2.5px_2.5px_0px_0px_var(--color-foreground)]">
             <div className="flex items-center gap-2">
               <CheckCircleIcon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               <span className="font-medium text-foreground">
-                MCX Bhavcopy Verified — {records.length} contract records loaded from manual import drop with SHA-256 integrity validation.
+                Manual import: {dataQualityData?.accepted_files_count ?? 9} files accepted, {dataQualityData?.quarantined_files_count ?? 0} quarantined (contract specs and holiday calendar unverified)
               </span>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                9 Files Accepted
-              </Badge>
-              <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600 dark:text-emerald-400">
-                0 Quarantined
+                {records.length} records
               </Badge>
             </div>
           </div>
         )}
 
-        {/* Error State Banner */}
+        {/* Plain Data-Coverage Line (B11) */}
+        {!error && !loading && coverageData && (
+          <div className="mx-4 lg:mx-6 mt-2 rounded border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground flex items-center justify-between">
+            <span>
+              Loaded <strong>{coverageData.trading_days_with_file_count}</strong> trading days ({coverageData.first_accepted_date}..{coverageData.last_accepted_date}); z-scores and backtests need at least <strong>30</strong> consecutive days.
+            </span>
+            <span className="text-[11px] font-mono">
+              Missing sessions: {coverageData.missing_trading_days_count}
+            </span>
+          </div>
+        )}
+
+        {/* Error State Banner (A6) */}
         {error && (
           <div className="mx-4 lg:mx-6 mt-4 rounded-lg border-2 border-destructive bg-destructive/10 p-4 text-destructive flex items-center justify-between shadow-[2.5px_2.5px_0px_0px_var(--color-foreground)]">
             <div className="flex items-center gap-2.5">
@@ -185,7 +231,7 @@ export default function Page() {
                 <span className="font-semibold text-sm">Backend Disconnected</span>
                 <p className="text-xs text-muted-foreground">
                   Unable to connect to FastAPI backend at http://127.0.0.1:8000. Start the server with:{" "}
-                  <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">uvicorn backend.api.main:app --reload</code>
+                  <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">uvicorn backend.api.main:app --host 127.0.0.1 --reload</code>
                   . Silent fallback to fixtures is strictly disallowed.
                 </p>
               </div>
@@ -201,27 +247,197 @@ export default function Page() {
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-6 py-4 md:py-6 pb-28">
 
-              {/* Section 1: KPI Summary Cards */}
+              {/* Section 1: KPI Summary Cards (B1, B2) */}
               <SectionCards
-                latestGoldTenPrice={latestTenRecord?.close || 142223.0}
-                spreadTenGuinea={spreadTenGuinea}
-                totalRecordsCount={records.length || 216}
-                acceptedFilesCount={dataQualityData?.accepted_files_count || 9}
+                benchmarkRecord={benchmarkTenRecord}
+                spreadPair={spreadKpiPair}
+                totalRecordsCount={records.length || 0}
+                acceptedFilesCount={dataQualityData?.accepted_files_count || 0}
+                quarantinedFilesCount={dataQualityData?.quarantined_files_count || 0}
               />
 
-              {/* Section 2: Interactive Normalized Prices Chart */}
+              {/* Section 2: Interactive Normalized Prices Chart (B3) */}
               <div className="px-4 lg:px-6">
                 <ChartAreaInteractive records={records} />
               </div>
 
-              {/* Section 3: Active Contracts Matrix Table */}
+              {/* Section 3: Persistent Offset Diagnostic (C4, C9) */}
+              <section id="offset" className="px-4 lg:px-6 space-y-3">
+                <Card className="border shadow-none">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Chart2Icon className="size-4 text-primary" />
+                        <CardTitle className="text-base font-bold">
+                          Same-Expiry Persistent Offset Diagnostic (30OCT2026)
+                        </CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-xs font-mono border-amber-400 text-amber-600 dark:text-amber-400">
+                        observed gap, unverified, not a signal
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-xs leading-relaxed">
+                      In the real market sample, same-expiry GOLDTEN (10g, Ahmedabad) trades consistently ~0.37% to 0.92% below GOLDGUINEA (8g, Ahmedabad) and GOLDPETAL (1g, Mumbai), while GOLDGUINEA and GOLDPETAL agree within ~₹0–55. All three are 999 purity. Descriptive only; whether the gap closes before the tender window must be tested later on several expiry cycles.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-xs">
+                    <div className="overflow-x-auto rounded-lg border">
+                      <table className="w-full text-left">
+                        <thead className="bg-muted text-[11px] uppercase tracking-wider text-muted-foreground">
+                          <tr>
+                            <th className="p-2.5">Trade Date</th>
+                            <th className="p-2.5">Days to Expiry</th>
+                            <th className="p-2.5">Days to Tender</th>
+                            <th className="p-2.5 text-right">GOLDTEN Norm</th>
+                            <th className="p-2.5 text-right">GUINEA Norm</th>
+                            <th className="p-2.5 text-right">PETAL Norm</th>
+                            <th className="p-2.5 text-right font-bold text-primary">TEN - GUINEA Gap</th>
+                            <th className="p-2.5 text-right">TEN - PETAL Gap</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y font-mono text-[11px]">
+                          {(offsetData?.observations || []).map((obs) => {
+                            const tenGuineaRs = obs.ten_minus_guinea_rs
+                            const tenGuineaPct = obs.ten_minus_guinea_pct
+                            return (
+                              <tr key={obs.trade_date} className="hover:bg-muted/30">
+                                <td className="p-2.5 font-medium">{obs.trade_date}</td>
+                                <td className="p-2.5">{obs.days_to_expiry}d</td>
+                                <td className="p-2.5">
+                                  {obs.days_to_tender_start !== null ? `${obs.days_to_tender_start}d` : "—"}
+                                </td>
+                                <td className="p-2.5 text-right">
+                                  {obs.goldten_norm_close ? `₹${obs.goldten_norm_close.toFixed(2)}` : "—"}
+                                </td>
+                                <td className="p-2.5 text-right">
+                                  {obs.guinea_norm_close ? `₹${obs.guinea_norm_close.toFixed(2)}` : "—"}
+                                </td>
+                                <td className="p-2.5 text-right">
+                                  {obs.petal_norm_close ? `₹${obs.petal_norm_close.toFixed(2)}` : "—"}
+                                </td>
+                                <td className="p-2.5 text-right font-bold text-rose-600 dark:text-rose-400">
+                                  {tenGuineaRs !== null ? `-₹${Math.abs(tenGuineaRs).toFixed(2)} (${tenGuineaPct?.toFixed(2)}%)` : "—"}
+                                </td>
+                                <td className="p-2.5 text-right text-muted-foreground">
+                                  {obs.ten_minus_petal_rs !== null ? `-₹${Math.abs(obs.ten_minus_petal_rs).toFixed(2)} (${obs.ten_minus_petal_pct?.toFixed(2)}%)` : "—"}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between text-muted-foreground text-[11px] pt-1 border-t">
+                      <span>{offsetData?.sample_size_note}</span>
+                      <span className="font-mono">Tender gate: 3 trading days compulsory blackout</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* Section 4: Spreads & Statistical Z-Score (C3, C9) */}
+              <section id="spreads" className="px-4 lg:px-6 space-y-3">
+                <Card className="border shadow-none">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <PulseIcon className="size-4 text-primary" />
+                        <CardTitle className="text-base font-bold">Relative-Value Pairs & Z-Score Hurdle</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {spreadsData?.total_pairs || 0} Pairs Evaluated
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Point-in-time relative value gaps across same-expiry and cross-expiry contracts.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-xs">
+                    {/* Z-score Status Banner */}
+                    <div className="rounded-lg border bg-amber-500/10 border-amber-500/30 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between">
+                      <div>
+                        <strong>Statistical Z-Score Status:</strong>{" "}
+                        <span className="font-mono font-bold">{spreadsData?.zscore_status?.status || "UNAVAILABLE"}</span>
+                        {" — "}
+                        {spreadsData?.zscore_status?.reason || "insufficient history (n=9, need >=30)"}
+                      </div>
+                      <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-700 dark:text-amber-300">
+                        Zero Look-ahead Guard
+                      </Badge>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-lg border">
+                      <table className="w-full text-left">
+                        <thead className="bg-muted text-[11px] uppercase tracking-wider text-muted-foreground">
+                          <tr>
+                            <th className="p-2.5">Pair</th>
+                            <th className="p-2.5">Type</th>
+                            <th className="p-2.5">Eligibility</th>
+                            <th className="p-2.5">Lot Ratio (LCM)</th>
+                            <th className="p-2.5 text-right">Leg A (₹/10g)</th>
+                            <th className="p-2.5 text-right">Leg B (₹/10g)</th>
+                            <th className="p-2.5 text-right font-bold">Spread (₹/10g)</th>
+                            <th className="p-2.5 text-right">Spread (%)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y font-mono text-[11px]">
+                          {(spreadsData?.pairs || []).slice(0, 10).map((p, idx) => (
+                            <tr key={`${p.symbol_a}_${p.symbol_b}_${idx}`} className="hover:bg-muted/30">
+                              <td className="p-2.5 font-medium">
+                                {p.symbol_a} ({p.raw_expiry_a}) vs {p.symbol_b} ({p.raw_expiry_b})
+                                {p.location_basis_differs && (
+                                  <Badge variant="outline" className="ml-1 text-[9px] py-0 px-1 border-amber-400 text-amber-600">
+                                    Location Differs
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="p-2.5 font-sans">
+                                <Badge variant="outline" className="text-[10px]">
+                                  {p.pair_type}
+                                </Badge>
+                              </td>
+                              <td className="p-2.5 font-sans">
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] ${
+                                    p.is_eligible ? "text-emerald-600 border-emerald-500" : "text-amber-600 border-amber-500"
+                                  }`}
+                                >
+                                  {p.eligibility_status}
+                                </Badge>
+                              </td>
+                              <td className="p-2.5 text-muted-foreground">
+                                {p.lot_matching?.lots_a} : {p.lot_matching?.lots_b}
+                              </td>
+                              <td className="p-2.5 text-right">
+                                {p.normalized_price_a ? `₹${p.normalized_price_a.toFixed(2)}` : "—"}
+                              </td>
+                              <td className="p-2.5 text-right">
+                                {p.normalized_price_b ? `₹${p.normalized_price_b.toFixed(2)}` : "—"}
+                              </td>
+                              <td className="p-2.5 text-right font-bold">
+                                {p.spread_value_rs !== null ? (p.spread_value_rs < 0 ? `-₹${Math.abs(p.spread_value_rs).toFixed(2)}` : `₹${p.spread_value_rs.toFixed(2)}`) : "—"}
+                              </td>
+                              <td className="p-2.5 text-right">
+                                {p.spread_percentage !== null ? `${p.spread_percentage.toFixed(2)}%` : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* Section 5: Contract Observations Table (B4) */}
               <section id="contracts">
                 <DataTable data={tableData} />
               </section>
 
-              {/* Section 4: Contract Calendar & Tender Engine Summary */}
+              {/* Section 6: Contract Calendar & Tender Engine */}
               <section id="calendar" className="px-4 lg:px-6 space-y-3">
-                <Card className="border-2 border-foreground shadow-[2.5px_2.5px_0px_0px_var(--color-foreground)]">
+                <Card className="border shadow-none">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -261,91 +477,67 @@ export default function Page() {
                 </Card>
               </section>
 
-              {/* Section 5: Spreads & Futures Curve (Phase 2 Anchor) */}
-              <section id="spreads" className="px-4 lg:px-6">
-                <Card className="border-dashed border-2 bg-muted/10">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <PulseIcon className="size-4 text-muted-foreground" />
-                        <CardTitle className="text-base font-semibold text-muted-foreground">
-                          Spreads & Term Structure Analytics (Coming in Phase 2)
-                        </CardTitle>
+              {/* Section 7: Walk-Forward Backtest Roadmap (Hidden behind DEV_UI) */}
+              {DEV_UI && (
+                <section id="backtest" className="px-4 lg:px-6">
+                  <Card className="border-dashed border-2 bg-muted/10">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FolderKanbanIcon className="size-4 text-muted-foreground" />
+                          <CardTitle className="text-base font-semibold text-muted-foreground">
+                            Walk-Forward Simulation & 3-Way Attribution (Coming in Phase 3)
+                          </CardTitle>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          Phase 3 Roadmap
+                        </Badge>
                       </div>
-                      <Badge variant="secondary" className="text-xs">
-                        Phase 2 Roadmap
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-xs">
-                      Rolling point-in-time z-scores, calendar carry roll-down separation, and Corwin-Schultz (2012) High-Low bid-ask spread proxies.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-xs text-muted-foreground">
-                    <p className="leading-relaxed">
-                      <strong>Phase 2 Diagnostic Note:</strong> In our real Bhavcopy sample, same-expiry GOLDTEN is consistently 0.37%–0.92% below GOLDGUINEA and GOLDPETAL.
-                      This offset will be evaluated with a multi-cycle persistent-offset diagnostic to verify whether it converges before tender closure.
-                    </p>
-                  </CardContent>
-                </Card>
-              </section>
+                      <CardDescription className="text-xs">
+                        Strict t+1 Open fill execution convention, parameter freezing on expanding train window, and independent P&L attribution.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-xs text-muted-foreground">
+                      <p className="leading-relaxed">
+                        P&L will be split independently into <strong>Gold Delta</strong>, <strong>Carry</strong>, and <strong>Alpha</strong>, reconciled against realized leg-by-leg mark-to-market returns minus statutory costs (Rs 176.14 roundtrip hurdle model).
+                      </p>
+                    </CardContent>
+                  </Card>
+                </section>
+              )}
 
-              {/* Section 6: Walk-Forward Backtest (Phase 3 Anchor) */}
-              <section id="backtest" className="px-4 lg:px-6">
-                <Card className="border-dashed border-2 bg-muted/10">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FolderKanbanIcon className="size-4 text-muted-foreground" />
-                        <CardTitle className="text-base font-semibold text-muted-foreground">
-                          Walk-Forward Simulation & 3-Way Attribution (Coming in Phase 3)
-                        </CardTitle>
+              {/* Section 8: Quiet Mode Alerts Roadmap (Hidden behind DEV_UI) */}
+              {DEV_UI && (
+                <section id="alerts" className="px-4 lg:px-6">
+                  <Card className="border-dashed border-2 bg-muted/10">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ShieldWarningIcon className="size-4 text-muted-foreground" />
+                          <CardTitle className="text-base font-semibold text-muted-foreground">
+                            Quiet Mode Alerts & Suppression Gate (Coming in Phase 5)
+                          </CardTitle>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          Phase 5 Roadmap
+                        </Badge>
                       </div>
-                      <Badge variant="secondary" className="text-xs">
-                        Phase 3 Roadmap
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-xs">
-                      Strict $t+1$ Open fill execution convention, parameter freezing on expanding train window, and independent P&L attribution.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-xs text-muted-foreground">
-                    <p className="leading-relaxed">
-                      P&L will be split independently into <strong>Gold Delta</strong>, <strong>Carry</strong>, and <strong>Alpha</strong>, reconciled against realized leg-by-leg mark-to-market returns minus statutory costs (Rs 176.14 roundtrip hurdle model).
-                    </p>
-                  </CardContent>
-                </Card>
-              </section>
+                      <CardDescription className="text-xs">
+                        High-hurdle signal gatekeeper. Alerts are raised only when expected convergence exceeds total trading friction. Silence is a feature.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-xs text-muted-foreground">
+                      <p className="leading-relaxed">
+                        Every suppressed trade is recorded with an explicit rationale (e.g. <em>&quot;Spread 0.42% &lt; Cost Hurdle 0.58%&quot;</em>, <em>&quot;Inside Tender Window&quot;</em>).
+                      </p>
+                    </CardContent>
+                  </Card>
+                </section>
+              )}
 
-              {/* Section 7: Quiet Mode Alerts (Phase 5 Anchor) */}
-              <section id="alerts" className="px-4 lg:px-6">
-                <Card className="border-dashed border-2 bg-muted/10">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShieldWarningIcon className="size-4 text-muted-foreground" />
-                        <CardTitle className="text-base font-semibold text-muted-foreground">
-                          Quiet Mode Alerts & Suppression Gate (Coming in Phase 5)
-                        </CardTitle>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        Phase 5 Roadmap
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-xs">
-                      High-hurdle signal gatekeeper. Alerts are raised only when expected convergence exceeds total trading friction. Silence is a feature.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-xs text-muted-foreground">
-                    <p className="leading-relaxed">
-                      Every suppressed trade is recorded with an explicit rationale (e.g. <em>&quot;Spread 0.42% &lt; Cost Hurdle 0.58%&quot;</em>, <em>&quot;Inside Tender Window&quot;</em>).
-                    </p>
-                  </CardContent>
-                </Card>
-              </section>
-
-              {/* Section 8: Data Quality Log & Quarantine */}
+              {/* Section 9: Data Quality Log & Quarantine */}
               <section id="data-quality" className="px-4 lg:px-6">
-                <Card className="border-2 border-foreground shadow-[2.5px_2.5px_0px_0px_var(--color-foreground)]">
+                <Card className="border shadow-none">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -395,9 +587,9 @@ export default function Page() {
                 </Card>
               </section>
 
-              {/* Section 9: MCX Rules & Contract Specs */}
+              {/* Section 10: MCX Rules & Contract Specs (B6) */}
               <section id="specs" className="px-4 lg:px-6">
-                <Card className="border-2 border-foreground shadow-[2.5px_2.5px_0px_0px_var(--color-foreground)]">
+                <Card className="border shadow-none">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -425,7 +617,8 @@ export default function Page() {
                           <div className="space-y-1 text-muted-foreground text-[11px]">
                             <div>Trading Unit: <strong>{c.trading_unit_g} g</strong></div>
                             <div>Quote Base: <strong>{c.quote_base_g} g</strong></div>
-                            <div>Delivery Center: <strong>{c.quote_location}</strong></div>
+                            <div>Quote Basis: <strong>ex-{c.quote_location}</strong></div>
+                            <div>Delivery Centres: <strong>{c.delivery_locations.join(", ")}</strong></div>
                             <div>Settlement: <span className="text-rose-600 font-semibold">{c.settlement_type}</span></div>
                             <div>Tender: {c.tender_rule}</div>
                           </div>
@@ -450,9 +643,4 @@ export default function Page() {
       </SidebarInset>
     </SidebarProvider>
   )
-}
-
-function roundTo(n: number, decimals: number): number {
-  const p = Math.pow(10, decimals)
-  return Math.round(n * p) / p
 }
