@@ -1,0 +1,71 @@
+version: "2025.1"
+effective_from: "2025-01-01"
+master_status: "UNVERIFIED"
+verified: false
+reviewed_at: null
+notes: "Statutory rates and broker placeholders. All verified flags false pending confirmation against official circulars."
+
+rates:
+  mcx_exchange_charge:
+    rate: 0.0000210 # 0.00210%
+    basis: "turnover"
+    payer: "both"
+    effective_from: "2025-01-01"
+    source_url: "https://www.mcxindia.com/membership/transaction-charges"
+    verified: false
+    notes: "MCX exchange transaction charge for futures"
+
+  sebi_turnover_fee:
+    rate: 0.0000010 # Rs 10 per crore = 0.00010%
+    basis: "turnover"
+    payer: "both"
+    effective_from: "2025-01-01"
+    source_url: "https://www.sebi.gov.in"
+    verified: false
+    notes: "SEBI regulatory turnover fee"
+
+  ctt:
+    rate: 0.00010 # 0.01%
+    basis: "sale_value"
+    payer: "seller"
+    effective_from: "2025-01-01"
+    source_url: "https://incometaxindia.gov.in"
+    verified: false
+    notes: "Commodities Transaction Tax on sell side of non-agri commodity futures"
+
+  stamp_duty:
+    rate: 0.000020 # 0.002%
+    basis: "buy_value"
+    payer: "buyer"
+    effective_from: "2025-01-01"
+    source_url: "https://dor.gov.in"
+    verified: false
+    notes: "Stamp duty on buyer side"
+
+  brokerage:
+    rate_type: "flat_per_order"
+    rate: 20.0
+    max_rate_pct: 0.0001 # 0.01% cap placeholder
+    payer: "both"
+    effective_from: "2025-01-01"
+    source_url: "broker_tariff_schedule"
+    verified: false
+    notes: "Broker-specific placeholder: Rs 20 flat per executed order leg"
+
+  gst:
+    rate: 0.18 # 18%
+    basis: "brokerage_exchange_sebi"
+    payer: "both"
+    effective_from: "2025-01-01"
+    source_url: "https://cbic-gst.gov.in"
+    verified: false
+    notes: "18% GST on (brokerage + exchange turnover charge + SEBI fee)"
+
+  corwin_schultz_fallback:
+    rate: 0.0005 # 5 bps default fallback
+    basis: "turnover"
+    payer: "both"
+    effective_from: "2025-01-01"
+    source_url: "internal_assumption"
+    verified: false
+    notes: "Conservative liquidity fallback cost applied when Corwin-Schultz spread is not estimable"

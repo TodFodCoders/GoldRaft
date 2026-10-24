@@ -1,0 +1,68 @@
+version: "2025.1"
+effective_date: "2025-01-01"
+source_url: "https://www.mcxindia.com/products/commodity-derivatives/metals"
+source_document_date: "2025-01-01"
+master_status: "UNVERIFIED"
+verified: false
+notes: "Reference specification unverified until confirmed against official MCX contract circulars"
+
+contracts:
+  GOLDM:
+    name: "Gold Mini"
+    symbol: "GOLDM"
+    trading_unit_g: 100
+    quote_base_g: 10
+    purity_fineness: 995
+    quote_location: "Ahmedabad"
+    tax_basis: "Ex-Ahmedabad"
+    settlement_type: "COMPULSORY DELIVERY"
+    delivery_locations: ["Ahmedabad"]
+    expiry_rule: "5th of expiry month, adjusted to preceding working day on holiday/weekend"
+    tender_rule: "last_3_trading_days_including_expiry"
+    ddr_rule: "delivery_due_date_following_tender_closure"
+    location_basis_differs: false
+
+  GOLDTEN:
+    name: "Gold Ten"
+    symbol: "GOLDTEN"
+    trading_unit_g: 10
+    quote_base_g: 10
+    purity_fineness: 999
+    quote_location: "Ahmedabad"
+    tax_basis: "Ex-Ahmedabad"
+    settlement_type: "COMPULSORY DELIVERY"
+    delivery_locations: ["Ahmedabad"]
+    expiry_rule: "last calendar day of expiry month, adjusted to preceding working day on holiday/weekend"
+    tender_rule: "last_3_trading_days_including_expiry"
+    ddr_rule: "delivery_due_date_following_tender_closure"
+    location_basis_differs: false
+
+  GOLDGUINEA:
+    name: "Gold Guinea"
+    symbol: "GOLDGUINEA"
+    trading_unit_g: 8
+    quote_base_g: 8
+    purity_fineness: 999
+    quote_location: "Ahmedabad"
+    tax_basis: "Ex-Ahmedabad"
+    settlement_type: "COMPULSORY DELIVERY"
+    delivery_locations: ["Ahmedabad"]
+    expiry_rule: "last calendar day of expiry month, adjusted to preceding working day on holiday/weekend"
+    tender_rule: "last_3_trading_days_including_expiry"
+    ddr_rule: "delivery_due_date_following_tender_closure"
+    location_basis_differs: false
+
+  GOLDPETAL:
+    name: "Gold Petal"
+    symbol: "GOLDPETAL"
+    trading_unit_g: 1
+    quote_base_g: 1
+    purity_fineness: 999
+    quote_location: "Mumbai"
+    tax_basis: "Ex-Mumbai"
+    settlement_type: "COMPULSORY DELIVERY"
+    delivery_locations: ["Mumbai"]
+    expiry_rule: "last calendar day of expiry month, adjusted to preceding working day on holiday/weekend"
+    tender_rule: "last_3_trading_days_including_expiry"
+    ddr_rule: "delivery_due_date_following_tender_closure"
+    location_basis_differs: true

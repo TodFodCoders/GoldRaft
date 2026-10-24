@@ -1,0 +1,32 @@
+date,description,morning_open,evening_open,special_note,source_file,source_url,downloaded_on,verified
+2025-01-01,New Year Day,true,false,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-02-26,Mahashivratri,false,true,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-03-14,Holi (2nd day),false,true,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-03-31,Id-Ul-Fitr (Ramadan Eid),false,true,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-04-10,Shri Mahavir Jayanti,false,true,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-04-14,Dr. Baba Saheb Ambedkar Jayanti,false,true,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-04-18,Good Friday,false,false,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-05-01,Maharashtra Day,false,true,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-08-15,Independence Day,false,false,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-08-27,Ganesh Chaturthi,false,true,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-10-02,Mahatma Gandhi Jayanti / Dassera,false,false,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-10-21,Diwali Laxmi Pujan,false,false,Closed*,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-10-22,Diwali-Balipratipada,false,true,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-11-05,Guru Nanak Jayanti,false,true,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2025-12-25,Christmas,false,false,,MCX_Trading_Holidays_2025.csv,,2026-10-24,false
+2026-01-01,New Year Day,true,false,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-01-26,Republic Day,false,false,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-03-03,Holi (2nd day),false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-03-26,Shri Ram Navmi,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-03-31,Shri Mahavir Jayanti,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-04-03,Good Friday,false,false,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-04-14,Dr. Baba Saheb Ambedkar Jayanti,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-05-01,Maharashtra Day,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-05-28,Bakri Id,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-06-26,Moharram,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-09-14,Ganesh Chaturthi,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-10-02,Mahatma Gandhi Jayanti,false,false,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-10-20,Dassera,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-11-10,Diwali-Balipratipada,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-11-24,Guru Nanak Jayanti,false,true,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false
+2026-12-25,Christmas,false,false,,MCX_Trading_Holidays_2026.csv,,2026-10-24,false

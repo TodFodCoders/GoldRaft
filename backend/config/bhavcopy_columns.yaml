@@ -1,0 +1,24 @@
+columns:
+  date: "Date"
+  instrument_name: "Instrument Name"
+  symbol: "Symbol"
+  expiry_date: "Expiry Date"
+  option_type: "Option Type"
+  strike_price: "Strike Price"
+  open: "Open"
+  high: "High"
+  low: "Low"
+  close: "Close"
+  prev_close: "Previous Close"
+  volume_lots: "Volume(Lots)"
+  volume_in_thousands: "Volume(In 000's)"
+  value_lacs: "Value(Lacs)"
+  open_interest: "Open Interest(Lots)"
+
+filters:
+  instrument_name: "FUTCOM"
+  tracked_symbols:
+    - "GOLDM"
+    - "GOLDTEN"
+    - "GOLDGUINEA"
+    - "GOLDPETAL"
