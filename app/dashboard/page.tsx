@@ -4,6 +4,7 @@ import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { ChartBarInteractive } from "@/components/chart-bar-interactive"
 import { ChartLineInteractive } from "@/components/chart-line-interactive"
 import { ChartVolumeProfile } from "@/components/chart-volume-profile"
+import { DashboardPreloaderController } from "@/components/dashboard-preloader"
 import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
@@ -54,6 +55,9 @@ export default function Page() {
 
         {/* Draggable Half Area Tab from Bottom */}
         <BottomDraggableTab />
+
+        {/* Dashboard Preloader with Skeleton Shimmer */}
+        <DashboardPreloaderController />
       </SidebarInset>
     </SidebarProvider>
   )
