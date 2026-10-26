@@ -45,6 +45,7 @@ import { z } from "zod"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   ChartContainer,
   ChartTooltip,
@@ -363,9 +364,12 @@ function DraggableRow({
 }
 export function DataTable({
   data: initialData,
+  className,
 }: {
   data: z.infer<typeof schema>[]
+  className?: string
 }) {
+  const padClass = className ? "" : "px-4 lg:px-6"
   const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -420,9 +424,9 @@ export function DataTable({
   return (
     <Tabs
       defaultValue="outline"
-      className="w-full flex-col justify-start gap-6"
+      className={cn("w-full flex-col justify-start gap-4", className)}
     >
-      <div className="flex items-center justify-between px-4 lg:px-6">
+      <div className={cn("flex items-center justify-between", padClass)}>
         <Label htmlFor="view-selector" className="sr-only">
           View
         </Label>
@@ -503,7 +507,7 @@ export function DataTable({
       </div>
       <TabsContent
         value="outline"
-        className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
+        className={cn("relative flex flex-col gap-4 overflow-auto", padClass)}
       >
         <div className="overflow-hidden rounded-lg border">
           <DndContext
@@ -641,16 +645,16 @@ export function DataTable({
       </TabsContent>
       <TabsContent
         value="past-performance"
-        className="flex flex-col px-4 lg:px-6"
+        className={cn("flex flex-col", padClass)}
       >
         <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
       </TabsContent>
-      <TabsContent value="key-personnel" className="flex flex-col px-4 lg:px-6">
+      <TabsContent value="key-personnel" className={cn("flex flex-col", padClass)}>
         <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
       </TabsContent>
       <TabsContent
         value="focus-documents"
-        className="flex flex-col px-4 lg:px-6"
+        className={cn("flex flex-col", padClass)}
       >
         <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
       </TabsContent>

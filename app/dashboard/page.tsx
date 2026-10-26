@@ -1,6 +1,9 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { BottomDraggableTab } from "@/components/bottom-draggable-tab"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
+import { ChartBarInteractive } from "@/components/chart-bar-interactive"
+import { ChartLineInteractive } from "@/components/chart-line-interactive"
+import { ChartVolumeProfile } from "@/components/chart-volume-profile"
 import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
@@ -27,9 +30,24 @@ export default function Page() {
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 pb-24">
               <SectionCards />
               <div className="px-4 lg:px-6">
-                <ChartAreaInteractive />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 @xl/main:grid-cols-2 items-stretch">
+                  <ChartAreaInteractive className="h-full" />
+                  <div className="grid grid-cols-1 grid-rows-2 gap-4 h-full">
+                    <ChartBarInteractive className="h-full" />
+                    <ChartLineInteractive className="h-full" />
+                  </div>
+                </div>
               </div>
-              <DataTable data={data} />
+              <div className="px-4 lg:px-6">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
+                  <div className="lg:col-span-3 min-w-0 flex flex-col">
+                    <DataTable data={data} className="w-full" />
+                  </div>
+                  <div className="lg:col-span-2 min-w-0 flex flex-col">
+                    <ChartVolumeProfile className="h-full" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

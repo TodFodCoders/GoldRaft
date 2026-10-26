@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { Sparkles } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardAction,
@@ -12,12 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
 import {
   Select,
   SelectContent,
@@ -29,271 +24,341 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
+import { cn } from "@/lib/utils"
 
-export const description = "An interactive area chart"
+import { EvilAreaChart } from "@/components/evilcharts/charts/recharts-area-chart"
+import { type ChartConfig } from "@/components/evilcharts/ui/recharts-chart"
 
-const chartData = [
-  { date: "2024-04-01", desktop: 222, mobile: 150 },
-  { date: "2024-04-02", desktop: 97, mobile: 180 },
-  { date: "2024-04-03", desktop: 167, mobile: 120 },
-  { date: "2024-04-04", desktop: 242, mobile: 260 },
-  { date: "2024-04-05", desktop: 373, mobile: 290 },
-  { date: "2024-04-06", desktop: 301, mobile: 340 },
-  { date: "2024-04-07", desktop: 245, mobile: 180 },
-  { date: "2024-04-08", desktop: 409, mobile: 320 },
-  { date: "2024-04-09", desktop: 59, mobile: 110 },
-  { date: "2024-04-10", desktop: 261, mobile: 190 },
-  { date: "2024-04-11", desktop: 327, mobile: 350 },
-  { date: "2024-04-12", desktop: 292, mobile: 210 },
-  { date: "2024-04-13", desktop: 342, mobile: 380 },
-  { date: "2024-04-14", desktop: 137, mobile: 220 },
-  { date: "2024-04-15", desktop: 120, mobile: 170 },
-  { date: "2024-04-16", desktop: 138, mobile: 190 },
-  { date: "2024-04-17", desktop: 446, mobile: 360 },
-  { date: "2024-04-18", desktop: 364, mobile: 410 },
-  { date: "2024-04-19", desktop: 243, mobile: 180 },
-  { date: "2024-04-20", desktop: 89, mobile: 150 },
-  { date: "2024-04-21", desktop: 137, mobile: 200 },
-  { date: "2024-04-22", desktop: 224, mobile: 170 },
-  { date: "2024-04-23", desktop: 138, mobile: 230 },
-  { date: "2024-04-24", desktop: 387, mobile: 290 },
-  { date: "2024-04-25", desktop: 215, mobile: 250 },
-  { date: "2024-04-26", desktop: 75, mobile: 130 },
-  { date: "2024-04-27", desktop: 383, mobile: 420 },
-  { date: "2024-04-28", desktop: 122, mobile: 180 },
-  { date: "2024-04-29", desktop: 315, mobile: 240 },
-  { date: "2024-04-30", desktop: 454, mobile: 380 },
-  { date: "2024-05-01", desktop: 165, mobile: 220 },
-  { date: "2024-05-02", desktop: 293, mobile: 310 },
-  { date: "2024-05-03", desktop: 247, mobile: 190 },
-  { date: "2024-05-04", desktop: 385, mobile: 420 },
-  { date: "2024-05-05", desktop: 481, mobile: 390 },
-  { date: "2024-05-06", desktop: 498, mobile: 520 },
-  { date: "2024-05-07", desktop: 388, mobile: 300 },
-  { date: "2024-05-08", desktop: 149, mobile: 210 },
-  { date: "2024-05-09", desktop: 227, mobile: 180 },
-  { date: "2024-05-10", desktop: 293, mobile: 330 },
-  { date: "2024-05-11", desktop: 335, mobile: 270 },
-  { date: "2024-05-12", desktop: 197, mobile: 240 },
-  { date: "2024-05-13", desktop: 197, mobile: 160 },
-  { date: "2024-05-14", desktop: 448, mobile: 490 },
-  { date: "2024-05-15", desktop: 473, mobile: 380 },
-  { date: "2024-05-16", desktop: 338, mobile: 400 },
-  { date: "2024-05-17", desktop: 499, mobile: 420 },
-  { date: "2024-05-18", desktop: 315, mobile: 350 },
-  { date: "2024-05-19", desktop: 235, mobile: 180 },
-  { date: "2024-05-20", desktop: 177, mobile: 230 },
-  { date: "2024-05-21", desktop: 82, mobile: 140 },
-  { date: "2024-05-22", desktop: 81, mobile: 120 },
-  { date: "2024-05-23", desktop: 252, mobile: 290 },
-  { date: "2024-05-24", desktop: 294, mobile: 220 },
-  { date: "2024-05-25", desktop: 201, mobile: 250 },
-  { date: "2024-05-26", desktop: 213, mobile: 170 },
-  { date: "2024-05-27", desktop: 420, mobile: 460 },
-  { date: "2024-05-28", desktop: 233, mobile: 190 },
-  { date: "2024-05-29", desktop: 78, mobile: 130 },
-  { date: "2024-05-30", desktop: 340, mobile: 280 },
-  { date: "2024-05-31", desktop: 178, mobile: 230 },
-  { date: "2024-06-01", desktop: 178, mobile: 200 },
-  { date: "2024-06-02", desktop: 470, mobile: 410 },
-  { date: "2024-06-03", desktop: 103, mobile: 160 },
-  { date: "2024-06-04", desktop: 439, mobile: 380 },
-  { date: "2024-06-05", desktop: 88, mobile: 140 },
-  { date: "2024-06-06", desktop: 294, mobile: 250 },
-  { date: "2024-06-07", desktop: 323, mobile: 370 },
-  { date: "2024-06-08", desktop: 385, mobile: 320 },
-  { date: "2024-06-09", desktop: 438, mobile: 480 },
-  { date: "2024-06-10", desktop: 155, mobile: 200 },
-  { date: "2024-06-11", desktop: 92, mobile: 150 },
-  { date: "2024-06-12", desktop: 492, mobile: 420 },
-  { date: "2024-06-13", desktop: 81, mobile: 130 },
-  { date: "2024-06-14", desktop: 426, mobile: 380 },
-  { date: "2024-06-15", desktop: 307, mobile: 350 },
-  { date: "2024-06-16", desktop: 371, mobile: 310 },
-  { date: "2024-06-17", desktop: 475, mobile: 520 },
-  { date: "2024-06-18", desktop: 107, mobile: 170 },
-  { date: "2024-06-19", desktop: 341, mobile: 290 },
-  { date: "2024-06-20", desktop: 408, mobile: 450 },
-  { date: "2024-06-21", desktop: 169, mobile: 210 },
-  { date: "2024-06-22", desktop: 317, mobile: 270 },
-  { date: "2024-06-23", desktop: 480, mobile: 530 },
-  { date: "2024-06-24", desktop: 132, mobile: 180 },
-  { date: "2024-06-25", desktop: 141, mobile: 190 },
-  { date: "2024-06-26", desktop: 434, mobile: 380 },
-  { date: "2024-06-27", desktop: 448, mobile: 490 },
-  { date: "2024-06-28", desktop: 149, mobile: 200 },
-  { date: "2024-06-29", desktop: 103, mobile: 160 },
-  { date: "2024-06-30", desktop: 446, mobile: 400 },
-]
+export const description = "Normalized Price Comparison with EvilCharts Brush"
 
+export type GoldPricePoint = {
+  [key: string]: unknown
+  date: string
+  day: number
+  futures: number
+  spot: number
+  spread: number
+  spreadBps: number
+}
+
+// Clean 30-day dataset matching EvilCharts' official demo structure
+function generateMonthlyData(): GoldPricePoint[] {
+  let seed = 777
+  function rand() {
+    seed = (seed * 16807) % 2147483647
+    return (seed - 1) / 2147483646
+  }
+
+  const items: GoldPricePoint[] = []
+  for (let d = 1; d <= 30; d++) {
+    const trend = (d / 30) * 1100
+    const wave = Math.sin(d * 0.45) * 180 + Math.cos(d * 0.2) * 120
+    const futures = Math.round(74800 + trend + wave + (rand() - 0.48) * 90)
+    const spot = Math.round(futures - 420 - Math.sin(d * 0.3) * 80 + (rand() - 0.5) * 40)
+    const spread = futures - spot
+    const spreadBps = Number(((spread / spot) * 10000).toFixed(1))
+
+    items.push({
+      date: `June ${d}`,
+      day: d,
+      futures,
+      spot,
+      spread,
+      spreadBps,
+    })
+  }
+  return items
+}
+
+const chartData = generateMonthlyData()
+const totalPoints = chartData.length
+
+// EvilCharts signature color scheme (Emerald & Rose)
 const chartConfig = {
-  visitors: {
-    label: "Visitors",
+  futures: {
+    label: "MCX Futures",
+    colors: {
+      light: ["#047857"],
+      dark: ["#10b981"],
+    },
   },
-  desktop: {
-    label: "Desktop",
-    color: "var(--primary)",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "var(--primary)",
+  spot: {
+    label: "Spot Bullion",
+    colors: {
+      light: ["#be123c"],
+      dark: ["#f43f5e"],
+    },
   },
 } satisfies ChartConfig
 
-export function ChartAreaInteractive() {
+export function ChartAreaInteractive({ className }: { className?: string } = {}) {
   const isMobile = useIsMobile()
-  const [timeRange, setTimeRange] = React.useState("90d")
+  const [timeRange, setTimeRange] = React.useState("30d")
+  const [startIndex, setStartIndex] = React.useState(0)
+  const [endIndex, setEndIndex] = React.useState(totalPoints - 1)
+  const [isDomainOptimized, setIsDomainOptimized] = React.useState(true)
 
+  // Mobile default
   React.useEffect(() => {
     if (isMobile) {
-      setTimeRange("7d")
+      const id = requestAnimationFrame(() => {
+        setTimeRange("14d")
+        setStartIndex(Math.max(0, totalPoints - 14))
+        setEndIndex(totalPoints - 1)
+      })
+      return () => cancelAnimationFrame(id)
     }
   }, [isMobile])
 
-  const filteredData = chartData.filter((item) => {
-    const date = new Date(item.date)
-    const referenceDate = new Date("2024-06-30")
-    let daysToSubtract = 90
-    if (timeRange === "30d") {
-      daysToSubtract = 30
-    } else if (timeRange === "7d") {
-      daysToSubtract = 7
+  // Handle Preset Clicks
+  const handlePreset = React.useCallback((preset: string) => {
+    setTimeRange(preset)
+    if (preset === "30d") {
+      setStartIndex(0)
+      setEndIndex(totalPoints - 1)
+    } else if (preset === "14d") {
+      setStartIndex(Math.max(0, totalPoints - 14))
+      setEndIndex(totalPoints - 1)
+    } else if (preset === "7d") {
+      setStartIndex(Math.max(0, totalPoints - 7))
+      setEndIndex(totalPoints - 1)
+    } else if (preset === "3d") {
+      setStartIndex(Math.max(0, totalPoints - 3))
+      setEndIndex(totalPoints - 1)
     }
-    const startDate = new Date(referenceDate)
-    startDate.setDate(startDate.getDate() - daysToSubtract)
-    return date >= startDate
-  })
+  }, [])
+
+  // Handle Brush change callback
+  const handleBrushChange = React.useCallback((range: { startIndex: number; endIndex: number }) => {
+    setStartIndex(range.startIndex)
+    setEndIndex(range.endIndex)
+    setTimeRange("custom")
+  }, [])
+
+  // Currently visible data slice
+  const visibleData = React.useMemo(() => {
+    return chartData.slice(startIndex, endIndex + 1)
+  }, [startIndex, endIndex])
+
+  const visibleDays = visibleData.length
+  const isSmallWindow = visibleDays <= 12
+
+  // Optimized Y-axis domain
+  const { domainMin, domainMax } = React.useMemo(() => {
+    if (!isDomainOptimized || visibleData.length === 0) {
+      return { domainMin: 73500, domainMax: 77000 }
+    }
+    let min = Infinity
+    let max = -Infinity
+    for (const d of visibleData) {
+      if (d.spot < min) min = d.spot
+      if (d.futures < min) min = d.futures
+      if (d.spot > max) max = d.spot
+      if (d.futures > max) max = d.futures
+    }
+    const range = max - min
+    const padding = Math.max(100, Math.round(range * 0.12))
+    const rawMin = Math.max(0, min - padding)
+    const rawMax = max + padding
+
+    const roundStep = range < 600 ? 50 : 100
+    const domainMin = Math.floor(rawMin / roundStep) * roundStep
+    const domainMax = Math.ceil(rawMax / roundStep) * roundStep
+
+    return { domainMin, domainMax }
+  }, [isDomainOptimized, visibleData])
+
+  const formatXAxisTick = React.useCallback(
+    (value: string) => {
+      if (isSmallWindow) {
+        return value // e.g. "June 5"
+      }
+      return value.split(" ")[1] // e.g. "5", "10", "15" (EvilCharts style)
+    },
+    [isSmallWindow]
+  )
+
+  const formatYAxisTick = React.useCallback(
+    (value: number) => {
+      if (domainMax - domainMin <= 1500) {
+        return `₹${(value / 1000).toFixed(1)}k`
+      }
+      return `₹${(value / 1000).toFixed(0)}k`
+    },
+    [domainMin, domainMax]
+  )
+
+  const startDateStr = chartData[startIndex]?.date ?? ""
+  const endDateStr = chartData[endIndex]?.date ?? ""
 
   return (
-    <Card className="@container/card">
-      <CardHeader>
-        <CardTitle>Total Visitors</CardTitle>
+    <Card className={cn("@container/card flex flex-col h-full", className)}>
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <CardTitle>Normalized Price Comparison</CardTitle>
+          {isSmallWindow ? (
+            <Badge
+              variant="outline"
+              className="text-[10px] font-medium gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/25 bg-emerald-500/10 py-0.5 px-2"
+            >
+              <Sparkles className="size-3" />
+              Fine Data Active ({visibleDays}d)
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="text-[10px] font-medium text-muted-foreground border-border py-0.5 px-2"
+            >
+              Overview ({visibleDays}d)
+            </Badge>
+          )}
+        </div>
         <CardDescription>
-          <span className="hidden @[540px]/card:block">
-            Total for the last 3 months
-          </span>
-          <span className="@[540px]/card:hidden">Last 3 months</span>
+          Purity-adjusted price 10g fine gold • MCX Futures vs Spot Bullion
         </CardDescription>
+
         <CardAction>
           <ToggleGroup
             multiple={false}
             value={timeRange ? [timeRange] : []}
             onValueChange={(value) => {
-              setTimeRange(value[0] ?? "90d")
+              if (value[0]) handlePreset(value[0])
             }}
             variant="outline"
-            className="hidden *:data-[slot=toggle-group-item]:px-4! @[767px]/card:flex"
+            className="hidden *:data-[slot=toggle-group-item]:px-2.5! @[767px]/card:flex"
           >
-            <ToggleGroupItem value="90d">Last 3 months</ToggleGroupItem>
-            <ToggleGroupItem value="30d">Last 30 days</ToggleGroupItem>
-            <ToggleGroupItem value="7d">Last 7 days</ToggleGroupItem>
+            <ToggleGroupItem value="30d">30D</ToggleGroupItem>
+            <ToggleGroupItem value="14d">14D</ToggleGroupItem>
+            <ToggleGroupItem value="7d">7D (Fine)</ToggleGroupItem>
+            <ToggleGroupItem value="3d">3D</ToggleGroupItem>
           </ToggleGroup>
+
           <Select
             value={timeRange}
             onValueChange={(value) => {
-              if (value !== null) {
-                setTimeRange(value)
-              }
+              if (value) handlePreset(value)
             }}
           >
             <SelectTrigger
-              className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
+              className="flex w-36 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
               size="sm"
-              aria-label="Select a value"
+              aria-label="Select time range"
             >
-              <SelectValue placeholder="Last 3 months" />
+              <SelectValue placeholder="30 Days" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem value="90d" className="rounded-lg">
-                Last 3 months
-              </SelectItem>
               <SelectItem value="30d" className="rounded-lg">
-                Last 30 days
+                30 Days
+              </SelectItem>
+              <SelectItem value="14d" className="rounded-lg">
+                14 Days
               </SelectItem>
               <SelectItem value="7d" className="rounded-lg">
-                Last 7 days
+                7 Days (Fine)
+              </SelectItem>
+              <SelectItem value="3d" className="rounded-lg">
+                3 Days (Ultra-Fine)
               </SelectItem>
             </SelectContent>
           </Select>
         </CardAction>
       </CardHeader>
-      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <ChartContainer
-          config={chartConfig}
-          className="aspect-auto h-[250px] w-full"
-        >
-          <AreaChart data={filteredData}>
-            <defs>
-              <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={1.0}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-              <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-mobile)"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-mobile)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} />
-            <XAxis
+
+      <CardContent className="px-2 pt-1 sm:px-6 pb-3 flex-1 flex flex-col justify-between min-h-0">
+        {/* EvilAreaChart with EvilBrush — NO DOTS, pure EvilCharts style */}
+        <div className="flex-1 min-h-[240px] w-full flex flex-col justify-between">
+          <EvilAreaChart
+            data={chartData}
+            config={chartConfig}
+            className="w-full h-full flex flex-col justify-between"
+            curveType="monotone"
+            xDataKey="date"
+          >
+            <EvilAreaChart.Grid strokeDasharray="3 3" />
+            <EvilAreaChart.XAxis
               dataKey="date"
+              tickFormatter={formatXAxisTick}
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              minTickGap={32}
-              tickFormatter={(value) => {
-                const date = new Date(value)
-                return date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })
-              }}
+              fontSize={10}
             />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }}
-                  indicator="dot"
-                />
-              }
+            <EvilAreaChart.YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={4}
+              domain={[domainMin, domainMax]}
+              tickFormatter={formatYAxisTick}
+              width={48}
+              fontSize={10}
             />
-            <Area
-              dataKey="mobile"
-              type="natural"
-              fill="url(#fillMobile)"
-              stroke="var(--color-mobile)"
-              stackId="a"
+            <EvilAreaChart.Brush
+              height={52}
+              formatLabel={(value) => String(value)}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onChange={handleBrushChange}
             />
-            <Area
-              dataKey="desktop"
-              type="natural"
-              fill="url(#fillDesktop)"
-              stroke="var(--color-desktop)"
-              stackId="a"
+            <EvilAreaChart.Legend isClickable />
+            <EvilAreaChart.Tooltip
+              variant="frosted-glass"
+              roundness="md"
+              labelFormatter={(labelValue) => String(labelValue)}
+              formatter={(value, name) => (
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                  <span>{name}:</span>
+                  <span className="font-semibold text-foreground">
+                    ₹{Number(value).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              )}
             />
-          </AreaChart>
-        </ChartContainer>
+            {/* Pure area gradient curves with NO DOTS */}
+            <EvilAreaChart.Area
+              dataKey="futures"
+              variant="gradient"
+              strokeVariant="solid"
+              isClickable
+            />
+            <EvilAreaChart.Area
+              dataKey="spot"
+              variant="gradient"
+              strokeVariant="dashed"
+              isClickable
+            />
+          </EvilAreaChart>
+        </div>
+
+        {/* Domain Optimizer Status & Auto Y Control Bar */}
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1.5 border-t border-border/50 px-1 mt-1">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[10.5px]">
+              {startDateStr} – {endDateStr}
+            </span>
+            <span className="hidden sm:inline font-mono text-[10px] bg-muted/60 px-1.5 py-0.5 rounded text-foreground/80">
+              ₹{(domainMin / 1000).toFixed(1)}k – ₹{(domainMax / 1000).toFixed(1)}k
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="hidden md:inline text-[10px] text-muted-foreground">
+              Narrow brush for fine data
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsDomainOptimized(!isDomainOptimized)}
+              title={isDomainOptimized ? "Disable Auto-Domain" : "Enable Auto-Domain Optimization"}
+              className={cn(
+                "px-2 py-0.5 rounded text-[10px] font-medium transition-colors border cursor-pointer",
+                isDomainOptimized
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:bg-muted"
+              )}
+            >
+              Auto Y: {isDomainOptimized ? "ON" : "OFF"}
+            </button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
