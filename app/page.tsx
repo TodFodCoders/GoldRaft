@@ -1,9 +1,13 @@
-"use client"
+import { Suspense } from "react"
+import { HomeView } from "@/components/home-view"
 
-import * as React from "react"
+// Opt this route segment out of instant navigation validation for dynamic 3D WebGL canvas
+export const instant = false
 
 export default function Home() {
   return (
-    <>Hi</>
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <HomeView />
+    </Suspense>
   )
 }
