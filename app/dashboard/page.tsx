@@ -32,7 +32,7 @@ export default function Page() {
               <div className="px-4 lg:px-6">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 @xl/main:grid-cols-2 items-stretch">
                   <ChartAreaInteractive className="h-full" />
-                  <div className="grid grid-cols-1 grid-rows-2 gap-4 h-full">
+                  <div className="grid grid-cols-1 md:grid-rows-2 gap-4 h-full">
                     <ChartBarInteractive className="h-full" />
                     <ChartLineInteractive className="h-full" />
                   </div>

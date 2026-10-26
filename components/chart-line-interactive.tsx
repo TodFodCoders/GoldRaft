@@ -72,7 +72,7 @@ const chartConfig = {
 
 export function ChartLineInteractive({ className }: { className?: string } = {}) {
   return (
-    <Card className={cn("@container/card flex flex-col justify-between h-full py-2", className)}>
+    <Card className={cn("@container/card flex flex-col justify-between h-full min-h-[170px] py-2", className)}>
       <CardHeader className="px-4 py-1 pb-0">
         <CardTitle className="text-sm font-semibold">Z-Score (30D)</CardTitle>
         <CardDescription className="text-xs">
@@ -89,7 +89,7 @@ export function ChartLineInteractive({ className }: { className?: string } = {})
         </CardAction>
       </CardHeader>
 
-      <CardContent className="px-3 pt-0 pb-1 flex-1 flex flex-col justify-end min-h-0">
+      <CardContent className="px-3 pt-0 pb-1 flex-1 flex flex-col justify-end min-h-[105px]">
         <EvilAreaChart
           data={chartData}
           config={chartConfig}
