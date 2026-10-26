@@ -4,7 +4,7 @@ import * as React from "react"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, LayoutDashboard } from "lucide-react"
+import { ArrowRight, LayoutDashboard, Pause, Play } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { SailboatLogo } from "@/components/dashboard-preloader"
 import { cn } from "@/lib/utils"
@@ -25,10 +25,31 @@ const ShaderGradient = dynamic(
 
 export function HomeView() {
   const [mounted, setMounted] = React.useState(false)
+  const [isPaused, setIsPaused] = React.useState(false)
 
   React.useEffect(() => {
     setMounted(true)
+    try {
+      const saved = localStorage.getItem("goldraft_shader_animation_paused")
+      if (saved !== null) {
+        setIsPaused(saved === "true")
+      }
+    } catch {
+      // Ignore storage access errors
+    }
   }, [])
+
+  const toggleAnimation = () => {
+    setIsPaused((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem("goldraft_shader_animation_paused", String(next))
+      } catch {
+        // Ignore storage access errors
+      }
+      return next
+    })
+  }
 
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-black text-white">
@@ -84,7 +105,7 @@ export function HomeView() {
               pixelDensity={1}
             >
               <ShaderGradient
-                animate="on"
+                animate={isPaused ? "off" : "on"}
                 axesHelper="on"
                 brightness={1.1}
                 cAzimuthAngle={180}
@@ -120,7 +141,7 @@ export function HomeView() {
                 uAmplitude={0}
                 uDensity={1.1}
                 uFrequency={5.5}
-                uSpeed={0.1}
+                uSpeed={isPaused ? 0 : 0.1}
                 uStrength={2.4}
                 uTime={0.2}
                 wireframe={false}
@@ -158,6 +179,29 @@ export function HomeView() {
             <ArrowRight className="size-5" />
           </Link>
         </div>
+      </div>
+
+      {/* Bottom Right Floating Pause/Play Animation Controller */}
+      <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50">
+        <button
+          type="button"
+          onClick={toggleAnimation}
+          aria-label={isPaused ? "Play animation" : "Pause animation"}
+          title={isPaused ? "Play animation" : "Pause animation"}
+          className="group flex items-center gap-2 rounded-full border border-white/15 bg-black/60 px-3 sm:px-3.5 py-2 text-xs font-medium text-white/90 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 hover:border-white/30 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer"
+        >
+          {isPaused ? (
+            <>
+              <Play className="size-3.5 fill-white text-white transition-transform group-hover:scale-110" />
+              <span className="hidden sm:inline">Play</span>
+            </>
+          ) : (
+            <>
+              <Pause className="size-3.5 fill-white text-white transition-transform group-hover:scale-110" />
+              <span className="hidden sm:inline">Pause</span>
+            </>
+          )}
+        </button>
       </div>
     </main>
   )
