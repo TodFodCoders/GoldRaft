@@ -74,8 +74,8 @@ const chartConfig = {
 
 export function ChartBarInteractive({ className }: { className?: string } = {}) {
   return (
-    <Card className={cn("@container/card flex flex-col justify-between h-full min-h-[170px] py-2", className)}>
-      <CardHeader className="px-4 py-1 pb-0">
+    <Card className={cn("@container/card flex flex-col justify-between h-full min-h-[170px] py-2 bg-card dark:bg-[#0A0A0A] overflow-hidden border border-border dark:border-white/10", className)}>
+      <CardHeader className="px-4 py-1 pb-0 dark:bg-[#0A0A0A]">
         <CardTitle className="text-sm font-semibold">Relative Spread & Z-Score</CardTitle>
         <CardDescription className="text-xs">
           Spread & z-score tracking

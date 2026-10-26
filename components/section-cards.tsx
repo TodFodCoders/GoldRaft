@@ -145,9 +145,9 @@ function MiniSparkline({
 
 export function SectionCards() {
   return (
-    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-[#0A0A0A] dark:*:data-[slot=card]:border-white/10">
       {/* 1. GOLDDM (100g, 995 purity) */}
-      <Card className="@container/card flex flex-col justify-between h-full">
+      <Card className="@container/card flex flex-col justify-between h-full bg-card dark:bg-[#0A0A0A] border border-border dark:border-white/10">
         <CardHeader>
           <CardDescription>GOLDDM (100g)</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
@@ -183,7 +183,7 @@ export function SectionCards() {
       </Card>
 
       {/* 2. GOLDTEN (10g, 999 purity) */}
-      <Card className="@container/card flex flex-col justify-between h-full">
+      <Card className="@container/card flex flex-col justify-between h-full bg-card dark:bg-[#0A0A0A] border border-border dark:border-white/10">
         <CardHeader>
           <CardDescription>GOLDTEN (10g)</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
@@ -219,7 +219,7 @@ export function SectionCards() {
       </Card>
 
       {/* 3. GOLDGUINEA (8g, 999 purity) */}
-      <Card className="@container/card flex flex-col justify-between h-full">
+      <Card className="@container/card flex flex-col justify-between h-full bg-card dark:bg-[#0A0A0A] border border-border dark:border-white/10">
         <CardHeader>
           <CardDescription>GOLDGUINEA (8g)</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
@@ -255,7 +255,7 @@ export function SectionCards() {
       </Card>
 
       {/* 4. GOLDPETAL (1g, 999 purity) */}
-      <Card className="@container/card flex flex-col justify-between h-full">
+      <Card className="@container/card flex flex-col justify-between h-full bg-card dark:bg-[#0A0A0A] border border-border dark:border-white/10">
         <CardHeader>
           <CardDescription>GOLDPETAL (1g)</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">

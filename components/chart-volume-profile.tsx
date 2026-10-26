@@ -173,8 +173,8 @@ export function ChartVolumeProfile({ className }: { className?: string } = {}) {
   const endDateStr = chartData[endIndex]?.date ?? ""
 
   return (
-    <Card className={cn("@container/card flex flex-col justify-between h-full", className)}>
-      <CardHeader className="p-4 sm:p-5 pb-2">
+    <Card className={cn("@container/card flex flex-col justify-between h-full bg-card dark:bg-[#0A0A0A] overflow-hidden border border-border dark:border-white/10", className)}>
+      <CardHeader className="p-4 sm:p-5 pb-2 dark:bg-[#0A0A0A]">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
             <div className="flex items-center gap-2">

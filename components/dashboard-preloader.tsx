@@ -60,13 +60,13 @@ export function DashboardPreloader({ className }: { className?: string }) {
         {/* Dim base skeleton silhouette */}
         <div className="absolute inset-0 bg-current opacity-20" />
 
-        {/* Buttery smooth 120 FPS GPU shimmer beam */}
+        {/* Buttery smooth 120 FPS diagonal GPU shimmer beam */}
         <div
-          className="absolute inset-0 -translate-x-full animate-shimmer"
+          className="absolute -inset-[50%] w-[200%] h-[200%] -translate-x-full -translate-y-full animate-shimmer-diagonal"
           style={{
             background:
-              "linear-gradient(90deg, transparent 0%, currentColor 50%, transparent 100%)",
-            opacity: 0.8,
+              "linear-gradient(135deg, transparent 0%, transparent 40%, currentColor 50%, transparent 60%, transparent 100%)",
+            opacity: 0.85,
             willChange: "transform",
           }}
         />
