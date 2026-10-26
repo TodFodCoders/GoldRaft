@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import { GraphNewUpIcon } from "@solar-icons/react/outline"
 
 import { Badge } from "@/components/ui/badge"
@@ -13,35 +12,67 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 
-const chartData = [
-  { month: "Feb", spread: 18.2, zScore: 0.4 },
-  { month: "Apr", spread: 24.5, zScore: 1.1 },
-  { month: "Jun", spread: 31.0, zScore: 1.8 },
-  { month: "Aug", spread: 22.4, zScore: 0.7 },
-  { month: "Oct", spread: 28.6, zScore: 1.4 },
-  { month: "Dec", spread: 35.2, zScore: 2.1 },
-]
+import { EvilAreaChart } from "@/components/evilcharts/charts/recharts-area-chart"
+import { type ChartConfig } from "@/components/evilcharts/ui/recharts-chart"
 
+export const description = "Relative Spread & Z-Score EvilCharts Design"
+
+export type SpreadZScorePoint = {
+  [key: string]: unknown
+  date: string
+  day: number
+  spread: number
+  zScore: number
+}
+
+// Clean 30-day dataset matching EvilCharts timeline structure
+function generateSpreadZScoreData(): SpreadZScorePoint[] {
+  let seed = 333
+  function rand() {
+    seed = (seed * 16807) % 2147483647
+    return (seed - 1) / 2147483646
+  }
+
+  const items: SpreadZScorePoint[] = []
+  for (let d = 1; d <= 30; d++) {
+    const trend = (d / 30) * 16
+    const wave = Math.sin(d * 0.5) * 5 + Math.cos(d * 0.25) * 3
+    const spread = Number((18 + trend + wave + (rand() - 0.5) * 2).toFixed(1))
+    const zScore = Number(((spread - 22) / 6.2).toFixed(2))
+
+    items.push({
+      date: `June ${d}`,
+      day: d,
+      spread,
+      zScore,
+    })
+  }
+  return items
+}
+
+const chartData = generateSpreadZScoreData()
+
+// EvilCharts color palette for Relative Spread (Emerald) & Z-Score (Rose)
 const chartConfig = {
   spread: {
     label: "Relative Spread (bps)",
-    color: "var(--primary)",
+    colors: {
+      light: ["#047857"],
+      dark: ["#10b981"],
+    },
   },
   zScore: {
-    label: "Z-Score",
-    color: "var(--chart-2)",
+    label: "Z-Score (σ)",
+    colors: {
+      light: ["#be123c"],
+      dark: ["#f43f5e"],
+    },
   },
 } satisfies ChartConfig
 
-export function ChartBarInteractive({ className }: { className?: string }) {
+export function ChartBarInteractive({ className }: { className?: string } = {}) {
   return (
     <Card className={cn("@container/card flex flex-col justify-between h-full py-2", className)}>
       <CardHeader className="px-4 py-1 pb-0">
@@ -59,78 +90,51 @@ export function ChartBarInteractive({ className }: { className?: string }) {
           </Badge>
         </CardAction>
       </CardHeader>
+
       <CardContent className="px-3 pt-0 pb-1 flex-1 flex flex-col justify-end min-h-0">
-        <ChartContainer
+        <EvilAreaChart
+          data={chartData}
           config={chartConfig}
           className="aspect-auto h-[95px] w-full"
+          curveType="monotone"
+          chartProps={{ margin: { top: 4, right: 6, left: 6, bottom: 0 } }}
         >
-          <AreaChart data={chartData} margin={{ top: 4, right: 6, left: 6, bottom: 0 }}>
-            <defs>
-              <linearGradient id="fillTopSpread" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-spread)"
-                  stopOpacity={0.6}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-spread)"
-                  stopOpacity={0.08}
-                />
-              </linearGradient>
-              <linearGradient id="fillTopZ" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-zScore)"
-                  stopOpacity={0.4}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-zScore)"
-                  stopOpacity={0.05}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
-            <XAxis
-              dataKey="month"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={4}
-              fontSize={10}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  indicator="dot"
-                  formatter={(value, name) => (
-                    <div className="flex items-center gap-1.5 font-mono text-xs">
-                      <span>{name}:</span>
-                      <span className="font-semibold text-foreground">
-                        {value} {name === "Relative Spread (bps)" ? "bps" : "σ"}
-                      </span>
-                    </div>
-                  )}
-                />
-              }
-            />
-            <Area
-              dataKey="zScore"
-              type="natural"
-              fill="url(#fillTopZ)"
-              stroke="var(--color-zScore)"
-              strokeWidth={1.5}
-            />
-            <Area
-              dataKey="spread"
-              type="natural"
-              fill="url(#fillTopSpread)"
-              stroke="var(--color-spread)"
-              strokeWidth={2}
-            />
-          </AreaChart>
-        </ChartContainer>
+          <EvilAreaChart.Grid strokeDasharray="3 3" />
+          <EvilAreaChart.XAxis
+            dataKey="date"
+            tickFormatter={(value) => value.split(" ")[1]}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={4}
+            fontSize={10}
+          />
+          <EvilAreaChart.Tooltip
+            variant="frosted-glass"
+            roundness="md"
+            labelFormatter={(labelValue) => String(labelValue)}
+            formatter={(value, name) => (
+              <div className="flex items-center gap-1.5 font-mono text-xs">
+                <span>{name}:</span>
+                <span className="font-semibold text-foreground">
+                  {value} {String(name).includes("Spread") ? "bps" : "σ"}
+                </span>
+              </div>
+            )}
+          />
+          {/* EvilCharts smooth area gradients — NO DOTS, NO TIMELINE CROPPER */}
+          <EvilAreaChart.Area
+            dataKey="spread"
+            variant="gradient"
+            strokeVariant="solid"
+            isClickable
+          />
+          <EvilAreaChart.Area
+            dataKey="zScore"
+            variant="gradient"
+            strokeVariant="dashed"
+            isClickable
+          />
+        </EvilAreaChart>
       </CardContent>
     </Card>
   )

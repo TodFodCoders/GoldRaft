@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import { GraphNewUpIcon } from "@solar-icons/react/outline"
 
 import { Badge } from "@/components/ui/badge"
@@ -13,35 +12,65 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 
-const chartData = [
-  { month: "Feb", zScore: 0.6, bound: 2.0 },
-  { month: "Apr", zScore: 1.2, bound: 2.0 },
-  { month: "Jun", zScore: -0.4, bound: 2.0 },
-  { month: "Aug", zScore: 0.9, bound: 2.0 },
-  { month: "Oct", zScore: 1.8, bound: 2.0 },
-  { month: "Dec", zScore: 1.3, bound: 2.0 },
-]
+import { EvilAreaChart } from "@/components/evilcharts/charts/recharts-area-chart"
+import { type ChartConfig } from "@/components/evilcharts/ui/recharts-chart"
 
+export const description = "Z-Score (30D) EvilCharts Design"
+
+export type ZScorePoint = {
+  [key: string]: unknown
+  date: string
+  day: number
+  zScore: number
+  bound: number
+}
+
+// Clean 30-day dataset matching EvilCharts timeline structure
+function generateZScoreData(): ZScorePoint[] {
+  let seed = 444
+  function rand() {
+    seed = (seed * 16807) % 2147483647
+    return (seed - 1) / 2147483646
+  }
+
+  const items: ZScorePoint[] = []
+  for (let d = 1; d <= 30; d++) {
+    const wave = Math.sin(d * 0.35) * 1.1 + Math.cos(d * 0.18) * 0.6
+    const zScore = Number((wave + (rand() - 0.48) * 0.4).toFixed(2))
+
+    items.push({
+      date: `June ${d}`,
+      day: d,
+      zScore,
+      bound: 2.0,
+    })
+  }
+  return items
+}
+
+const chartData = generateZScoreData()
+
+// EvilCharts color palette for Z-Score (Sky/Cyan) & 2σ Bound (Amber)
 const chartConfig = {
   zScore: {
-    label: "Z-Score",
-    color: "var(--primary)",
+    label: "Z-Score (σ)",
+    colors: {
+      light: ["#0284c7"],
+      dark: ["#38bdf8"],
+    },
   },
   bound: {
     label: "2σ Bound",
-    color: "var(--chart-2)",
+    colors: {
+      light: ["#f59e0b"],
+      dark: ["#fbbf24"],
+    },
   },
 } satisfies ChartConfig
 
-export function ChartLineInteractive({ className }: { className?: string }) {
+export function ChartLineInteractive({ className }: { className?: string } = {}) {
   return (
     <Card className={cn("@container/card flex flex-col justify-between h-full py-2", className)}>
       <CardHeader className="px-4 py-1 pb-0">
@@ -59,79 +88,51 @@ export function ChartLineInteractive({ className }: { className?: string }) {
           </Badge>
         </CardAction>
       </CardHeader>
+
       <CardContent className="px-3 pt-0 pb-1 flex-1 flex flex-col justify-end min-h-0">
-        <ChartContainer
+        <EvilAreaChart
+          data={chartData}
           config={chartConfig}
           className="aspect-auto h-[95px] w-full"
+          curveType="monotone"
+          chartProps={{ margin: { top: 4, right: 6, left: 6, bottom: 0 } }}
         >
-          <AreaChart data={chartData} margin={{ top: 4, right: 6, left: 6, bottom: 0 }}>
-            <defs>
-              <linearGradient id="fillBottomZ" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-zScore)"
-                  stopOpacity={0.6}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-zScore)"
-                  stopOpacity={0.08}
-                />
-              </linearGradient>
-              <linearGradient id="fillBottomBound" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-bound)"
-                  stopOpacity={0.2}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-bound)"
-                  stopOpacity={0.02}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
-            <XAxis
-              dataKey="month"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={4}
-              fontSize={10}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  indicator="dot"
-                  formatter={(value, name) => (
-                    <div className="flex items-center gap-1.5 font-mono text-xs">
-                      <span>{name}:</span>
-                      <span className="font-semibold text-foreground">
-                        {value}σ
-                      </span>
-                    </div>
-                  )}
-                />
-              }
-            />
-            <Area
-              dataKey="bound"
-              type="natural"
-              fill="url(#fillBottomBound)"
-              stroke="var(--color-bound)"
-              strokeDasharray="4 4"
-              strokeWidth={1}
-            />
-            <Area
-              dataKey="zScore"
-              type="natural"
-              fill="url(#fillBottomZ)"
-              stroke="var(--color-zScore)"
-              strokeWidth={2}
-            />
-          </AreaChart>
-        </ChartContainer>
+          <EvilAreaChart.Grid strokeDasharray="3 3" />
+          <EvilAreaChart.XAxis
+            dataKey="date"
+            tickFormatter={(value) => value.split(" ")[1]}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={4}
+            fontSize={10}
+          />
+          <EvilAreaChart.Tooltip
+            variant="frosted-glass"
+            roundness="md"
+            labelFormatter={(labelValue) => String(labelValue)}
+            formatter={(value, name) => (
+              <div className="flex items-center gap-1.5 font-mono text-xs">
+                <span>{name}:</span>
+                <span className="font-semibold text-foreground">
+                  {value}σ
+                </span>
+              </div>
+            )}
+          />
+          {/* EvilCharts smooth area gradients — NO DOTS, NO TIMELINE CROPPER */}
+          <EvilAreaChart.Area
+            dataKey="zScore"
+            variant="gradient"
+            strokeVariant="solid"
+            isClickable
+          />
+          <EvilAreaChart.Area
+            dataKey="bound"
+            variant="gradient"
+            strokeVariant="dashed"
+            isClickable
+          />
+        </EvilAreaChart>
       </CardContent>
     </Card>
   )
